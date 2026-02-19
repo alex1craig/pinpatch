@@ -10,10 +10,9 @@ export const PIN_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(PIN_CURS
 
 type PinGlyphProps = {
   stroke?: string;
-  strokeWidth?: string;
 };
 
-export const PinGlyph = ({ stroke = "#000000", strokeWidth = "2" }: PinGlyphProps): ReactElement => {
+export const PinGlyph = ({ stroke = "#000000" }: PinGlyphProps): ReactElement => {
   return (
     <svg
       aria-hidden="true"
@@ -22,7 +21,7 @@ export const PinGlyph = ({ stroke = "#000000", strokeWidth = "2" }: PinGlyphProp
       stroke={stroke}
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={strokeWidth}
+      strokeWidth="2"
       viewBox="0 0 24 24"
     >
       <path d={PIN_OUTLINE_PATH} />
