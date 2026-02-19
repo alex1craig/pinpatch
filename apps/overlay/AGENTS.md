@@ -26,13 +26,20 @@ Scope: `apps/overlay/**`
 - Comment mode cursor is globally overridden to the same 16px pin glyph used for idle pins (white fill with visible dark outline) via `html.pinpatch-comment-mode`.
 - Pins transition through statuses:
   - `idle -> queued -> running -> completed|error|cancelled|timeout`
-- Hovering a pin highlights the original target element bounding box captured when the pin was created.
+- Pins are route-scoped by `pathname + search`; only pins for the current route render, but all routes share one in-memory store.
+- Pins persist in browser `sessionStorage` for the life of the tab and are restored on reload/navigation.
+- Pin geometry is anchor-based:
+  - resolve target by stored element hints when available
+  - fallback to viewport-relative ratios when target resolution fails
+  - recalculate visible pin coordinates on resize
+- Hovering a pin highlights the current resolved target bounding box (or fallback rect when unresolved).
 - Completed pins remain visible until manually cleared.
 - Status and composer UI are rendered in popovers anchored to each pin trigger.
 - Running/queued pins expose a bottom `Cancel` button in the status panel that cancels the in-flight task before removing the pin.
 - Error/cancelled/timeout pins expose retry and dismiss controls.
 - Comment composer actions use an outline-styled Cancel button and a primary Submit button.
 - When a pin is created, the comment textarea auto-focuses so typing can start immediately.
+- Restored in-flight pins (`queued`/`running` with `taskId` + `sessionId`) re-subscribe to SSE progress streams.
 
 ## Integration Points
 

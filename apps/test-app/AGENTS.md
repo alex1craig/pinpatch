@@ -24,6 +24,11 @@ If routes change, update Playwright tests in the same PR.
 
 - Smoke tests should verify core pin flow on each route.
 - Smoke tests should verify that hovering a pin shows the target-element highlight overlay.
+- Smoke tests should verify pin alignment survives viewport resize.
+- Smoke tests should verify route-scoped pin persistence:
+  - pins created on one route are hidden on other routes
+  - pins reappear with correct alignment when returning to their route
+  - pins persist after reload within the same tab session
 - Smoke tests should verify keyboard shortcut clearing of pins (`Meta+Backspace` on macOS, `Control+Delete` elsewhere) and that in-flight pins trigger bridge cancellation.
 - Keep `data-testid` selectors stable for:
   - clickable target elements for pin placement

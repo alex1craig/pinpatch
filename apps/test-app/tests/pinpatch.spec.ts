@@ -32,6 +32,30 @@ const createPinOnTarget = async (
   await expect(page.getByTestId("pinpatch-pin").first()).toBeVisible();
 };
 
+const assertPinAlignedToTarget = async (
+  page: Page,
+  targetTestId: string,
+  tolerancePx = 24
+): Promise<void> => {
+  const pinBox = await page.getByTestId("pinpatch-pin").first().boundingBox();
+  const targetBox = await page.getByTestId(targetTestId).boundingBox();
+
+  expect(pinBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  if (!pinBox || !targetBox) {
+    return;
+  }
+
+  const pinCenterX = pinBox.x + pinBox.width / 2;
+  const pinCenterY = pinBox.y + pinBox.height / 2;
+  const targetCenterX = targetBox.x + targetBox.width / 2;
+  const targetCenterY = targetBox.y + targetBox.height / 2;
+
+  expect(Math.abs(pinCenterX - targetCenterX)).toBeLessThanOrEqual(tolerancePx);
+  expect(Math.abs(pinCenterY - targetCenterY)).toBeLessThanOrEqual(tolerancePx);
+};
+
 const assertRouteSmokeFlow = async (page: Page, route: string, targetTestId: string, comment: string): Promise<void> => {
   await page.goto(route);
   await page.waitForSelector("#pinpatch-overlay-root");
@@ -55,6 +79,51 @@ test("comment mode toggles and submits a pin on home route", async ({ page }) =>
 
 test("comment mode toggles and submits a pin on settings route", async ({ page }) => {
   await assertRouteSmokeFlow(page, "/settings", "save-settings-button", "Make the save button full width on mobile.");
+});
+
+test("pin stays aligned after viewport resize", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  await createPinOnTarget(page, "upgrade-button", "Keep this aligned during resize.");
+  await assertPinAlignedToTarget(page, "upgrade-button");
+
+  await page.setViewportSize({ width: 430, height: 900 });
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+  await assertPinAlignedToTarget(page, "upgrade-button", 28);
+});
+
+test("pins persist across routes and reload while remaining aligned", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  await createPinOnTarget(page, "upgrade-button", "Persist this pin on home route.");
+  await assertPinAlignedToTarget(page, "upgrade-button");
+
+  await page.getByTestId("settings-route-link").click();
+  await page.waitForSelector("#pinpatch-overlay-root");
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);
+
+  await createPinOnTarget(page, "save-settings-button", "Persist this pin on settings route.");
+  await assertPinAlignedToTarget(page, "save-settings-button");
+
+  await page.locator('a[href="/"]').first().click();
+  await page.waitForSelector("#pinpatch-overlay-root");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+  await assertPinAlignedToTarget(page, "upgrade-button");
+
+  await page.getByTestId("settings-route-link").click();
+  await page.waitForSelector("#pinpatch-overlay-root");
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+  await assertPinAlignedToTarget(page, "save-settings-button");
+
+  await page.reload();
+  await page.waitForSelector("#pinpatch-overlay-root");
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+  await assertPinAlignedToTarget(page, "save-settings-button");
 });
 
 test("shortcut clears all pins", async ({ page }) => {

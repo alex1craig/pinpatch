@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { Popover, PopoverTrigger } from "@pinpatch/ui/components/popover";
 import { PIN_CURSOR } from "./components/pin-glyph";
@@ -10,10 +10,17 @@ import type {
   HoverBounds,
   OverlayElement,
   OverlayPin,
+  PinAnchor,
+  PinStatus,
   ProgressEvent,
+  TargetHint,
   TerminalEvent
 } from "./components/types";
 import "./styles.css";
+
+const PIN_STORAGE_KEY = "pinpatch.overlay.pins.v1";
+const PIN_STORAGE_VERSION = 1;
+const NAVIGATION_EVENT = "pinpatch:navigation";
 
 const getBridgeOrigin = (): string => {
   const custom = (window as typeof window & { __PINPATCH_BRIDGE_URL?: string }).__PINPATCH_BRIDGE_URL;
@@ -45,6 +52,41 @@ const randomId = (): string => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value));
+};
+
+const getViewportWidth = (): number => {
+  return Math.max(window.innerWidth, 1);
+};
+
+const getViewportHeight = (): number => {
+  return Math.max(window.innerHeight, 1);
+};
+
+const toViewportRatio = (value: number, size: number): number => {
+  if (!Number.isFinite(value) || !Number.isFinite(size) || size <= 0) {
+    return 0;
+  }
+
+  return clamp(value / size, 0, 1);
+};
+
+const fromViewportRatio = (ratio: number, size: number): number => {
+  const safeRatio = Number.isFinite(ratio) ? ratio : 0;
+  return clamp(safeRatio, 0, 1) * Math.max(size, 1);
+};
+
+const toTaskId = (): string => {
+  const date = new Date().toISOString().slice(0, 10);
+  const suffix = Math.random().toString(16).slice(2, 8);
+  return `${date}-${suffix}`;
+};
+
+const getRouteKey = (): string => {
+  return `${window.location.pathname}${window.location.search}`;
+};
+
 const extractNearbyText = (element: HTMLElement): string[] => {
   const parent = element.parentElement;
   if (!parent) {
@@ -66,12 +108,6 @@ const computedStyleSummary = (element: HTMLElement): Record<string, string> => {
     fontSize: style.fontSize,
     backgroundColor: style.backgroundColor
   };
-};
-
-const toTaskId = (): string => {
-  const date = new Date().toISOString().slice(0, 10);
-  const suffix = Math.random().toString(16).slice(2, 8);
-  return `${date}-${suffix}`;
 };
 
 const captureScreenshot = async (): Promise<string> => {
@@ -109,9 +145,397 @@ const captureScreenshot = async (): Promise<string> => {
   }
 };
 
+const isPinStatus = (status: unknown): status is PinStatus => {
+  return (
+    status === "idle" ||
+    status === "queued" ||
+    status === "running" ||
+    status === "completed" ||
+    status === "error" ||
+    status === "cancelled" ||
+    status === "timeout"
+  );
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+};
+
+const asFiniteNumber = (value: unknown, fallback: number): number => {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+};
+
+const sanitizeTextHint = (value: string | null): string | undefined => {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized.slice(0, 200);
+};
+
+const escapeSelector = (value: string): string => {
+  if (typeof CSS !== "undefined" && "escape" in CSS) {
+    return CSS.escape(value);
+  }
+
+  return value.replace(/(["\\])/g, "\\$1");
+};
+
+const buildTargetHint = (element: HTMLElement): TargetHint => {
+  return {
+    testId: sanitizeTextHint(element.getAttribute("data-testid")),
+    id: sanitizeTextHint(element.id),
+    ariaLabel: sanitizeTextHint(element.getAttribute("aria-label")),
+    tag: element.tagName.toLowerCase(),
+    text: sanitizeTextHint(element.textContent)
+  };
+};
+
+const normalizeTargetHint = (value: unknown): TargetHint | null => {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const tag = sanitizeTextHint(typeof record.tag === "string" ? record.tag : null);
+  if (!tag) {
+    return null;
+  }
+
+  return {
+    tag,
+    testId: sanitizeTextHint(typeof record.testId === "string" ? record.testId : null),
+    id: sanitizeTextHint(typeof record.id === "string" ? record.id : null),
+    ariaLabel: sanitizeTextHint(typeof record.ariaLabel === "string" ? record.ariaLabel : null),
+    text: sanitizeTextHint(typeof record.text === "string" ? record.text : null)
+  };
+};
+
+const resolveTargetFromHint = (targetHint: TargetHint): HTMLElement | null => {
+  if (targetHint.testId) {
+    const byTestId = document.querySelector(`[data-testid="${escapeSelector(targetHint.testId)}"]`);
+    if (byTestId instanceof HTMLElement) {
+      return byTestId;
+    }
+  }
+
+  if (targetHint.id) {
+    const byId = document.getElementById(targetHint.id);
+    if (byId instanceof HTMLElement) {
+      return byId;
+    }
+  }
+
+  const tag = targetHint.tag || "div";
+
+  if (targetHint.ariaLabel) {
+    const byAria = document.querySelector(
+      `${tag}[aria-label="${escapeSelector(targetHint.ariaLabel)}"]`
+    );
+    if (byAria instanceof HTMLElement) {
+      return byAria;
+    }
+  }
+
+  if (targetHint.text) {
+    const text = targetHint.text.trim();
+    if (text) {
+      const candidates = document.querySelectorAll(tag);
+      for (const node of candidates) {
+        if (!(node instanceof HTMLElement)) {
+          continue;
+        }
+
+        const candidateText = node.textContent?.trim();
+        if (candidateText === text) {
+          return node;
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
+type GeometryResult = {
+  x: number;
+  y: number;
+  targetRect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+};
+
+const buildAnchor = (
+  x: number,
+  y: number,
+  targetRect: { left: number; top: number; width: number; height: number },
+  targetNode: HTMLElement
+): PinAnchor => {
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
+
+  const targetWidth = Math.max(targetRect.width, 1);
+  const targetHeight = Math.max(targetRect.height, 1);
+
+  return {
+    viewportRatio: {
+      x: toViewportRatio(x, viewportWidth),
+      y: toViewportRatio(y, viewportHeight)
+    },
+    targetRectRatio: {
+      left: toViewportRatio(targetRect.left, viewportWidth),
+      top: toViewportRatio(targetRect.top, viewportHeight),
+      width: toViewportRatio(targetRect.width, viewportWidth),
+      height: toViewportRatio(targetRect.height, viewportHeight)
+    },
+    targetOffsetRatio: {
+      x: clamp((x - targetRect.left) / targetWidth, 0, 1),
+      y: clamp((y - targetRect.top) / targetHeight, 0, 1)
+    },
+    targetHint: buildTargetHint(targetNode)
+  };
+};
+
+const buildFallbackAnchor = (
+  x: number,
+  y: number,
+  targetRect: { left: number; top: number; width: number; height: number }
+): PinAnchor => {
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
+
+  return {
+    viewportRatio: {
+      x: toViewportRatio(x, viewportWidth),
+      y: toViewportRatio(y, viewportHeight)
+    },
+    targetRectRatio: {
+      left: toViewportRatio(targetRect.left, viewportWidth),
+      top: toViewportRatio(targetRect.top, viewportHeight),
+      width: toViewportRatio(targetRect.width, viewportWidth),
+      height: toViewportRatio(targetRect.height, viewportHeight)
+    },
+    targetOffsetRatio: {
+      x: targetRect.width > 0 ? clamp((x - targetRect.left) / targetRect.width, 0, 1) : 0.5,
+      y: targetRect.height > 0 ? clamp((y - targetRect.top) / targetRect.height, 0, 1) : 0.5
+    },
+    // This intentionally resolves to no elements, forcing viewport-ratio fallback.
+    targetHint: {
+      tag: "pinpatch-missing-target"
+    }
+  };
+};
+
+const normalizePinAnchor = (
+  value: unknown,
+  fallback: { x: number; y: number; targetRect: { left: number; top: number; width: number; height: number } }
+): PinAnchor => {
+  const record = asRecord(value);
+  if (!record) {
+    return buildFallbackAnchor(fallback.x, fallback.y, fallback.targetRect);
+  }
+
+  const viewportRatioRecord = asRecord(record.viewportRatio);
+  const targetRectRatioRecord = asRecord(record.targetRectRatio);
+  const targetOffsetRatioRecord = asRecord(record.targetOffsetRatio);
+  const targetHint = normalizeTargetHint(record.targetHint);
+
+  if (!viewportRatioRecord || !targetRectRatioRecord || !targetOffsetRatioRecord || !targetHint) {
+    return buildFallbackAnchor(fallback.x, fallback.y, fallback.targetRect);
+  }
+
+  return {
+    viewportRatio: {
+      x: clamp(asFiniteNumber(viewportRatioRecord.x, toViewportRatio(fallback.x, getViewportWidth())), 0, 1),
+      y: clamp(asFiniteNumber(viewportRatioRecord.y, toViewportRatio(fallback.y, getViewportHeight())), 0, 1)
+    },
+    targetRectRatio: {
+      left: clamp(
+        asFiniteNumber(targetRectRatioRecord.left, toViewportRatio(fallback.targetRect.left, getViewportWidth())),
+        0,
+        1
+      ),
+      top: clamp(
+        asFiniteNumber(targetRectRatioRecord.top, toViewportRatio(fallback.targetRect.top, getViewportHeight())),
+        0,
+        1
+      ),
+      width: clamp(
+        asFiniteNumber(targetRectRatioRecord.width, toViewportRatio(fallback.targetRect.width, getViewportWidth())),
+        0,
+        1
+      ),
+      height: clamp(
+        asFiniteNumber(targetRectRatioRecord.height, toViewportRatio(fallback.targetRect.height, getViewportHeight())),
+        0,
+        1
+      )
+    },
+    targetOffsetRatio: {
+      x: clamp(asFiniteNumber(targetOffsetRatioRecord.x, 0.5), 0, 1),
+      y: clamp(asFiniteNumber(targetOffsetRatioRecord.y, 0.5), 0, 1)
+    },
+    targetHint
+  };
+};
+
+const resolvePinGeometry = (pin: OverlayPin): GeometryResult => {
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
+  const target = resolveTargetFromHint(pin.anchor.targetHint);
+
+  if (target) {
+    const rect = target.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width * pin.anchor.targetOffsetRatio.x,
+      y: rect.top + rect.height * pin.anchor.targetOffsetRatio.y,
+      targetRect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height
+      }
+    };
+  }
+
+  return {
+    x: fromViewportRatio(pin.anchor.viewportRatio.x, viewportWidth),
+    y: fromViewportRatio(pin.anchor.viewportRatio.y, viewportHeight),
+    targetRect: {
+      left: fromViewportRatio(pin.anchor.targetRectRatio.left, viewportWidth),
+      top: fromViewportRatio(pin.anchor.targetRectRatio.top, viewportHeight),
+      width: fromViewportRatio(pin.anchor.targetRectRatio.width, viewportWidth),
+      height: fromViewportRatio(pin.anchor.targetRectRatio.height, viewportHeight)
+    }
+  };
+};
+
+const withResolvedGeometry = (pin: OverlayPin): OverlayPin => {
+  const resolved = resolvePinGeometry(pin);
+  if (
+    pin.x === resolved.x &&
+    pin.y === resolved.y &&
+    pin.targetRect.left === resolved.targetRect.left &&
+    pin.targetRect.top === resolved.targetRect.top &&
+    pin.targetRect.width === resolved.targetRect.width &&
+    pin.targetRect.height === resolved.targetRect.height
+  ) {
+    return pin;
+  }
+
+  return {
+    ...pin,
+    x: resolved.x,
+    y: resolved.y,
+    targetRect: resolved.targetRect
+  };
+};
+
+const normalizeOverlayPin = (value: unknown, currentRouteKey: string): OverlayPin | null => {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const id = typeof record.id === "string" && record.id ? record.id : null;
+  if (!id) {
+    return null;
+  }
+
+  const targetRectRecord = asRecord(record.targetRect);
+  const fallbackTargetRect = {
+    left: asFiniteNumber(targetRectRecord?.left, 0),
+    top: asFiniteNumber(targetRectRecord?.top, 0),
+    width: asFiniteNumber(targetRectRecord?.width, 0),
+    height: asFiniteNumber(targetRectRecord?.height, 0)
+  };
+
+  const fallbackX = asFiniteNumber(record.x, 0);
+  const fallbackY = asFiniteNumber(record.y, 0);
+
+  const routeKey = typeof record.routeKey === "string" && record.routeKey ? record.routeKey : currentRouteKey;
+  const anchor = normalizePinAnchor(record.anchor, {
+    x: fallbackX,
+    y: fallbackY,
+    targetRect: fallbackTargetRect
+  });
+
+  const statusCandidate = record.status;
+  const status = isPinStatus(statusCandidate) ? statusCandidate : "idle";
+
+  return {
+    id,
+    routeKey,
+    x: fallbackX,
+    y: fallbackY,
+    targetRect: fallbackTargetRect,
+    anchor,
+    body: typeof record.body === "string" ? record.body : "",
+    status,
+    message: typeof record.message === "string" ? record.message : "",
+    taskId: typeof record.taskId === "string" && record.taskId ? record.taskId : undefined,
+    sessionId: typeof record.sessionId === "string" && record.sessionId ? record.sessionId : undefined
+  };
+};
+
+const readPersistedPins = (currentRouteKey: string): OverlayPin[] => {
+  try {
+    const raw = window.sessionStorage.getItem(PIN_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    const parsedRecord = asRecord(parsed);
+
+    let candidates: unknown[] = [];
+    if (Array.isArray(parsed)) {
+      candidates = parsed;
+    } else if (parsedRecord && parsedRecord.version === PIN_STORAGE_VERSION && Array.isArray(parsedRecord.pins)) {
+      candidates = parsedRecord.pins;
+    }
+
+    const pins: OverlayPin[] = [];
+    for (const candidate of candidates) {
+      const normalized = normalizeOverlayPin(candidate, currentRouteKey);
+      if (!normalized) {
+        continue;
+      }
+
+      pins.push(withResolvedGeometry(normalized));
+    }
+
+    return pins;
+  } catch {
+    return [];
+  }
+};
+
+const persistPins = (pins: OverlayPin[]): void => {
+  const payload = {
+    version: PIN_STORAGE_VERSION,
+    pins
+  };
+
+  try {
+    window.sessionStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Intentionally ignore storage failures.
+  }
+};
+
 const OverlayApp = (): ReactElement => {
   const [commentMode, setCommentMode] = useState(false);
   const [pins, setPins] = useState<OverlayPin[]>([]);
+  const [currentRouteKey, setCurrentRouteKey] = useState<string>(() => getRouteKey());
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [hoverBox, setHoverBox] = useState<DOMRect | null>(null);
   const [composer, setComposer] = useState<ComposerState | null>(null);
@@ -121,51 +545,114 @@ const OverlayApp = (): ReactElement => {
   const pinElementMapRef = useRef(new Map<string, HTMLButtonElement>());
   const panelElementMapRef = useRef(new Map<string, HTMLDivElement>());
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const hydratedRef = useRef(false);
 
   const isMac = useMemo(() => /mac/i.test(navigator.platform), []);
   const bridgeOrigin = useMemo(() => getBridgeOrigin(), []);
 
-  const dismissComposer = (): void => {
+  const visiblePins = useMemo(() => {
+    return pins.filter((pin) => pin.routeKey === currentRouteKey);
+  }, [pins, currentRouteKey]);
+
+  const isInFlightPin = useCallback((pin: OverlayPin): boolean => {
+    return pin.status === "queued" || pin.status === "running";
+  }, []);
+
+  const subscribeToEvents = useCallback(
+    (pinId: string, eventsUrl: string): void => {
+      const existing = streamMapRef.current.get(pinId);
+      if (existing) {
+        existing.close();
+      }
+
+      const source = new EventSource(`${bridgeOrigin}${eventsUrl}`);
+      streamMapRef.current.set(pinId, source);
+
+      source.addEventListener("progress", (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as ProgressEvent;
+        setPins((existingPins) =>
+          existingPins.map((pin) =>
+            pin.id === pinId
+              ? {
+                ...pin,
+                status: payload.status,
+                message: payload.message
+              }
+              : pin
+          )
+        );
+      });
+
+      source.addEventListener("terminal", (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as TerminalEvent;
+
+        setPins((existingPins) =>
+          existingPins.map((pin) =>
+            pin.id === pinId
+              ? {
+                ...pin,
+                status: payload.status,
+                message: payload.summary
+              }
+              : pin
+          )
+        );
+
+        source.close();
+        streamMapRef.current.delete(pinId);
+      });
+
+      source.onerror = () => {
+        source.close();
+        streamMapRef.current.delete(pinId);
+      };
+    },
+    [bridgeOrigin]
+  );
+
+  const cancelPinIfInFlight = useCallback(
+    (pin: OverlayPin): void => {
+      if (!isInFlightPin(pin) || !pin.taskId || !pin.sessionId) {
+        return;
+      }
+
+      void postJson<{ status: "cancelled" }>(`${bridgeOrigin}/api/tasks/${pin.taskId}/cancel`, {
+        sessionId: pin.sessionId
+      }).catch(() => undefined);
+    },
+    [bridgeOrigin, isInFlightPin]
+  );
+
+  const dismissComposer = useCallback((): void => {
     setComposer((current) => {
       if (current) {
-        setPins((existing) => existing.filter((pin) => pin.id !== current.pinId));
+        setPins((existingPins) => existingPins.filter((pin) => pin.id !== current.pinId));
       }
       return null;
     });
-  };
+  }, []);
 
-  const isInFlightPin = (pin: OverlayPin): boolean => {
-    return pin.status === "queued" || pin.status === "running";
-  };
+  const clearPin = useCallback(
+    (pin: OverlayPin): void => {
+      cancelPinIfInFlight(pin);
 
-  const cancelPinIfInFlight = (pin: OverlayPin): void => {
-    if (!isInFlightPin(pin) || !pin.taskId || !pin.sessionId) {
-      return;
-    }
+      const source = streamMapRef.current.get(pin.id);
+      if (source) {
+        source.close();
+        streamMapRef.current.delete(pin.id);
+      }
 
-    void postJson<{ status: "cancelled" }>(`${bridgeOrigin}/api/tasks/${pin.taskId}/cancel`, {
-      sessionId: pin.sessionId
-    }).catch(() => undefined);
-  };
+      pinElementMapRef.current.delete(pin.id);
+      panelElementMapRef.current.delete(pin.id);
 
-  const clearPin = (pin: OverlayPin): void => {
-    cancelPinIfInFlight(pin);
+      setComposer((current) => (current?.pinId === pin.id ? null : current));
+      setHoveredPinId((current) => (current === pin.id ? null : current));
+      setPins((existingPins) => existingPins.filter((entry) => entry.id !== pin.id));
+    },
+    [cancelPinIfInFlight]
+  );
 
-    const source = streamMapRef.current.get(pin.id);
-    if (source) {
-      source.close();
-      streamMapRef.current.delete(pin.id);
-    }
-
-    pinElementMapRef.current.delete(pin.id);
-    panelElementMapRef.current.delete(pin.id);
-
-    setComposer((current) => (current?.pinId === pin.id ? null : current));
-    setHoveredPinId((current) => (current === pin.id ? null : current));
-    setPins((existing) => existing.filter((entry) => entry.id !== pin.id));
-  };
-
-  const clearAllPins = (): void => {
+  const clearAllPins = useCallback((): void => {
     for (const pin of pins) {
       cancelPinIfInFlight(pin);
     }
@@ -181,7 +668,7 @@ const OverlayApp = (): ReactElement => {
     setHoveredPinId(null);
     setHoverBox(null);
     setPins([]);
-  };
+  }, [cancelPinIfInFlight, pins]);
 
   const setPinElement = (pinId: string, element: HTMLButtonElement | null): void => {
     if (element) {
@@ -244,6 +731,29 @@ const OverlayApp = (): ReactElement => {
   }, [commentMode]);
 
   useEffect(() => {
+    const hydratedPins = readPersistedPins(getRouteKey());
+    setPins(hydratedPins);
+
+    for (const pin of hydratedPins) {
+      if (!isInFlightPin(pin) || !pin.taskId || !pin.sessionId) {
+        continue;
+      }
+
+      subscribeToEvents(pin.id, `/api/tasks/${pin.taskId}/events?sessionId=${pin.sessionId}`);
+    }
+
+    hydratedRef.current = true;
+  }, [isInFlightPin, subscribeToEvents]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) {
+      return;
+    }
+
+    persistPins(pins);
+  }, [pins]);
+
+  useEffect(() => {
     if (!composer) {
       return;
     }
@@ -261,6 +771,64 @@ const OverlayApp = (): ReactElement => {
 
     return () => window.cancelAnimationFrame(handle);
   }, [composer]);
+
+  useEffect(() => {
+    const syncRouteState = (): void => {
+      const nextRouteKey = getRouteKey();
+      setCurrentRouteKey(nextRouteKey);
+      setPins((existingPins) =>
+        existingPins.map((pin) => (pin.routeKey === nextRouteKey ? withResolvedGeometry(pin) : pin))
+      );
+      setHoverBox(null);
+    };
+
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = function (...args): void {
+      originalPushState.apply(window.history, args);
+      window.dispatchEvent(new Event(NAVIGATION_EVENT));
+    };
+
+    window.history.replaceState = function (...args): void {
+      originalReplaceState.apply(window.history, args);
+      window.dispatchEvent(new Event(NAVIGATION_EVENT));
+    };
+
+    window.addEventListener(NAVIGATION_EVENT, syncRouteState);
+    window.addEventListener("popstate", syncRouteState);
+    window.addEventListener("hashchange", syncRouteState);
+
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener(NAVIGATION_EVENT, syncRouteState);
+      window.removeEventListener("popstate", syncRouteState);
+      window.removeEventListener("hashchange", syncRouteState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hoveredPinId) {
+      return;
+    }
+
+    const hoveredPin = pins.find((pin) => pin.id === hoveredPinId);
+    if (!hoveredPin || hoveredPin.routeKey !== currentRouteKey) {
+      setHoveredPinId(null);
+    }
+  }, [currentRouteKey, hoveredPinId, pins]);
+
+  useEffect(() => {
+    if (!composer) {
+      return;
+    }
+
+    const composerPin = pins.find((pin) => pin.id === composer.pinId);
+    if (!composerPin || composerPin.routeKey !== currentRouteKey) {
+      setComposer(null);
+    }
+  }, [composer, currentRouteKey, pins]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -297,7 +865,7 @@ const OverlayApp = (): ReactElement => {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [commentMode, isMac, pins]);
+  }, [clearAllPins, commentMode, dismissComposer, isMac]);
 
   useEffect(() => {
     if (!hoveredPinId) {
@@ -325,6 +893,33 @@ const OverlayApp = (): ReactElement => {
     window.addEventListener("mousemove", onMouseMove);
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, [hoveredPinId]);
+
+  useEffect(() => {
+    let frame = 0;
+
+    const scheduleResolve = (): void => {
+      if (frame) {
+        return;
+      }
+
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        setPins((existingPins) =>
+          existingPins.map((pin) => (pin.routeKey === currentRouteKey ? withResolvedGeometry(pin) : pin))
+        );
+      });
+    };
+
+    window.addEventListener("resize", scheduleResolve);
+    scheduleResolve();
+
+    return () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+      window.removeEventListener("resize", scheduleResolve);
+    };
+  }, [currentRouteKey]);
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent): void => {
@@ -359,23 +954,36 @@ const OverlayApp = (): ReactElement => {
       event.stopPropagation();
 
       const pinId = randomId();
-      setPins((existing) => [
-        ...existing,
+      const anchor = buildAnchor(
+        event.clientX,
+        event.clientY,
         {
-          id: pinId,
-          x: event.clientX,
-          y: event.clientY,
-          targetRect: {
-            left: target.rect.left,
-            top: target.rect.top,
-            width: target.rect.width,
-            height: target.rect.height
-          },
-          body: "",
-          status: "idle",
-          message: ""
-        }
-      ]);
+          left: target.rect.left,
+          top: target.rect.top,
+          width: target.rect.width,
+          height: target.rect.height
+        },
+        target.node
+      );
+
+      const pin: OverlayPin = {
+        id: pinId,
+        routeKey: currentRouteKey,
+        x: event.clientX,
+        y: event.clientY,
+        targetRect: {
+          left: target.rect.left,
+          top: target.rect.top,
+          width: target.rect.width,
+          height: target.rect.height
+        },
+        anchor,
+        body: "",
+        status: "idle",
+        message: ""
+      };
+
+      setPins((existingPins) => [...existingPins, pin]);
 
       setComposer({
         pinId,
@@ -394,7 +1002,7 @@ const OverlayApp = (): ReactElement => {
       window.removeEventListener("mousemove", onMouseMove, true);
       window.removeEventListener("click", onClick, true);
     };
-  }, [commentMode]);
+  }, [commentMode, currentRouteKey]);
 
   useEffect(() => {
     return () => {
@@ -410,70 +1018,40 @@ const OverlayApp = (): ReactElement => {
       return null;
     }
 
-    const pin = pins.find((entry) => entry.id === hoveredPinId);
+    const pin = visiblePins.find((entry) => entry.id === hoveredPinId);
     return pin?.targetRect ?? null;
-  }, [hoveredPinId, pins]);
-
-  const subscribeToEvents = (pinId: string, eventsUrl: string): void => {
-    const source = new EventSource(`${bridgeOrigin}${eventsUrl}`);
-    streamMapRef.current.set(pinId, source);
-
-    source.addEventListener("progress", (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as ProgressEvent;
-      setPins((existing) =>
-        existing.map((pin) =>
-          pin.id === pinId
-            ? {
-              ...pin,
-              status: payload.status,
-              message: payload.message
-            }
-            : pin
-        )
-      );
-    });
-
-    source.addEventListener("terminal", (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as TerminalEvent;
-
-      setPins((existing) =>
-        existing.map((pin) =>
-          pin.id === pinId
-            ? {
-              ...pin,
-              status: payload.status,
-              message: payload.summary
-            }
-            : pin
-        )
-      );
-
-      source.close();
-      streamMapRef.current.delete(pinId);
-    });
-
-    source.onerror = () => {
-      source.close();
-      streamMapRef.current.delete(pinId);
-    };
-  };
+  }, [hoveredPinId, visiblePins]);
 
   const submitPin = async (): Promise<void> => {
     if (!composer) {
       return;
     }
 
-    const pin = pins.find((entry) => entry.id === composer.pinId);
-    if (!pin || !composer.body.trim()) {
+    const existingPin = pins.find((entry) => entry.id === composer.pinId);
+    if (!existingPin || !composer.body.trim()) {
       return;
     }
+
+    const pin = withResolvedGeometry(existingPin);
+    const targetElement = resolveTargetFromHint(pin.anchor.targetHint) ?? composer.target.node;
+    const rect = targetElement.getBoundingClientRect();
+
+    setPins((existingPins) =>
+      existingPins.map((entry) =>
+        entry.id === pin.id
+          ? {
+            ...entry,
+            x: pin.x,
+            y: pin.y,
+            targetRect: pin.targetRect
+          }
+          : entry
+      )
+    );
 
     const clientTaskId = toTaskId();
     const sessionId = randomId();
     const screenshotDataUrl = await captureScreenshot();
-
-    const element = composer.target.node;
-    const rect = composer.target.rect;
 
     const uiChangePacket = {
       id: randomId(),
@@ -484,13 +1062,13 @@ const OverlayApp = (): ReactElement => {
         height: window.innerHeight
       },
       element: {
-        tag: element.tagName.toLowerCase(),
-        role: element.getAttribute("role"),
-        text: element.textContent?.trim() ?? null,
+        tag: targetElement.tagName.toLowerCase(),
+        role: targetElement.getAttribute("role"),
+        text: targetElement.textContent?.trim() ?? null,
         attributes: {
-          class: element.getAttribute("class"),
-          "aria-label": element.getAttribute("aria-label"),
-          "data-testid": element.getAttribute("data-testid")
+          class: targetElement.getAttribute("class"),
+          "aria-label": targetElement.getAttribute("aria-label"),
+          "data-testid": targetElement.getAttribute("data-testid")
         },
         boundingBox: {
           x: rect.x,
@@ -499,15 +1077,15 @@ const OverlayApp = (): ReactElement => {
           height: rect.height
         }
       },
-      nearbyText: extractNearbyText(element),
-      domSnippet: element.outerHTML.slice(0, 3000),
-      computedStyleSummary: computedStyleSummary(element),
+      nearbyText: extractNearbyText(targetElement),
+      domSnippet: targetElement.outerHTML.slice(0, 3000),
+      computedStyleSummary: computedStyleSummary(targetElement),
       screenshotPath: `.pinpatch/screenshots/${clientTaskId}.png`,
       userRequest: composer.body
     };
 
-    setPins((existing) =>
-      existing.map((entry) =>
+    setPins((existingPins) =>
+      existingPins.map((entry) =>
         entry.id === composer.pinId
           ? {
             ...entry,
@@ -552,8 +1130,8 @@ const OverlayApp = (): ReactElement => {
         debug: false
       });
 
-      setPins((existing) =>
-        existing.map((entry) =>
+      setPins((existingPins) =>
+        existingPins.map((entry) =>
           entry.id === composer.pinId
             ? {
               ...entry,
@@ -569,8 +1147,8 @@ const OverlayApp = (): ReactElement => {
       subscribeToEvents(composer.pinId, createResponse.eventsUrl);
       setComposer(null);
     } catch (error) {
-      setPins((existing) =>
-        existing.map((entry) =>
+      setPins((existingPins) =>
+        existingPins.map((entry) =>
           entry.id === composer.pinId
             ? {
               ...entry,
@@ -589,8 +1167,8 @@ const OverlayApp = (): ReactElement => {
     }
 
     const sessionId = randomId();
-    setPins((existing) =>
-      existing.map((entry) =>
+    setPins((existingPins) =>
+      existingPins.map((entry) =>
         entry.id === pin.id
           ? {
             ...entry,
@@ -613,8 +1191,8 @@ const OverlayApp = (): ReactElement => {
 
       subscribeToEvents(pin.id, response.eventsUrl);
     } catch (error) {
-      setPins((existing) =>
-        existing.map((entry) =>
+      setPins((existingPins) =>
+        existingPins.map((entry) =>
           entry.id === pin.id
             ? {
               ...entry,
@@ -655,7 +1233,7 @@ const OverlayApp = (): ReactElement => {
         />
       ) : null}
 
-      {pins.map((pin) => {
+      {visiblePins.map((pin) => {
         const isHovered = hoveredPinId === pin.id;
         const isComposerPin = composer?.pinId === pin.id;
         const showStatusPanel = isHovered && !isComposerPin && pin.status !== "idle";
