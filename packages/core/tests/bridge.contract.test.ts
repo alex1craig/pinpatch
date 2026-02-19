@@ -79,13 +79,17 @@ const waitForTaskStatus = async (
     attempts += 1;
   }
 
-  throw new Error(`Timed out waiting for task ${taskId} to reach status ${status}`);
+  throw new Error(
+    `Timed out waiting for task ${taskId} to reach status ${status}`,
+  );
 };
 
 const waitForTaskState = async (
   store: ArtifactStore,
   taskId: string,
-  predicate: (task: NonNullable<Awaited<ReturnType<ArtifactStore["getTask"]>>>) => boolean,
+  predicate: (
+    task: NonNullable<Awaited<ReturnType<ArtifactStore["getTask"]>>>,
+  ) => boolean,
   description: string,
 ): Promise<void> => {
   let attempts = 0;
@@ -184,6 +188,9 @@ describe("bridge API contracts", () => {
     expect(mockAdapter.lastPrompt).toContain(
       "Never revert, overwrite, or clean up unrelated repo changes",
     );
+    expect(mockAdapter.lastPrompt).toContain(
+      "Output format (**must follow**) must be exactly one sentence summarizing the changes made.",
+    );
 
     const followUpBody = "Now make the button primary and add a subtle shadow.";
     const followUpSubmitResponse = await request(bridge.app)
@@ -203,7 +210,8 @@ describe("bridge API contracts", () => {
     await waitForTaskState(
       store,
       taskId,
-      (task) => task.latestSessionId === "session-2" && task.status === "completed",
+      (task) =>
+        task.latestSessionId === "session-2" && task.status === "completed",
       "second submit to reach completed state",
     );
 
