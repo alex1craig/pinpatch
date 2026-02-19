@@ -32,6 +32,7 @@ Scope: `apps/overlay/**`
   - `idle -> queued -> running -> completed|error|cancelled|timeout`
 - Pins are route-scoped by `pathname + search`; only pins for the current route render, but all routes share one in-memory store.
 - Pins persist in browser `sessionStorage` for the life of the tab and are restored on reload/navigation.
+- Overlay persistence stays in `sessionStorage` (not `.pinpatch`) because overlay code runs in the browser sandbox, needs immediate local state updates, and should remain tab-scoped.
 - Pin geometry is anchor-based:
   - resolve target by stored element hints when available
   - fallback to viewport-relative ratios when target resolution fails
@@ -40,11 +41,14 @@ Scope: `apps/overlay/**`
 - Completed pins remain visible until manually cleared.
 - Status and composer UI are rendered in popovers anchored to each pin trigger.
 - Running/queued pins expose a bottom `Cancel` button in the status panel that cancels the in-flight task before removing the pin.
+- Completed pins expose a follow-up textarea in the status panel with `Clear` (remove pin) and `Submit` (re-run same task with follow-up prompt) controls.
 - Error/cancelled/timeout pins expose retry and dismiss controls.
 - Pin composer actions use an outline-styled Cancel button and a primary Submit button.
 - When a pin is created, the pin textarea auto-focuses so typing can start immediately.
 - In the pin composer, `Enter` submits and `Shift+Enter` inserts a newline.
+- In completed pin follow-up textarea, `Enter` submits and `Shift+Enter` inserts a newline.
 - Clicking outside an open pin composer dismisses it and deletes the draft pin.
+- `idle` draft pins must only exist while their composer is open; draft pins are pruned if composer state is missing (including post-reload hydration).
 - Restored in-flight pins (`queued`/`running` with `taskId` + `sessionId`) re-subscribe to SSE progress streams.
 
 ## Layering and Theme Rules

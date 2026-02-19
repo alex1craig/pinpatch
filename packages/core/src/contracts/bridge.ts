@@ -33,6 +33,7 @@ export const SubmitTaskRequestSchema = z.object({
   model: z.string().min(1),
   dryRun: z.boolean().default(false),
   debug: z.boolean().default(false),
+  followUpBody: z.string().trim().min(1).optional(),
 });
 export type SubmitTaskRequest = z.infer<typeof SubmitTaskRequestSchema>;
 

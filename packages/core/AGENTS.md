@@ -31,6 +31,7 @@ Scope: `packages/core/**`
   - `.pinpatch/sessions/`
   - `.pinpatch/screenshots/`
   - `.pinpatch/runtime/logs/`
+- Core owns durable on-disk artifacts in `.pinpatch`; do not move overlay tab/session UI state here (overlay uses browser `sessionStorage` by design).
 - Writes should stay atomic through fs helpers.
 - Provider prompt payloads (built in `runtime/task-runner.ts`) must keep strict scope guardrails so coding agents do not touch unrelated files or overwrite concurrent work.
 
@@ -39,7 +40,7 @@ Scope: `packages/core/**`
 - `GET /health`
 - `GET /overlay.js`
 - `POST /api/tasks`
-- `POST /api/tasks/:taskId/submit`
+- `POST /api/tasks/:taskId/submit` (supports optional `followUpBody` override)
 - `POST /api/tasks/:taskId/cancel`
 - `GET /api/tasks/:taskId/events?sessionId=...` (SSE)
 

@@ -215,6 +215,23 @@ export const createBridgeServer = (
 
     const payload = parsed.data;
 
+    if (payload.followUpBody) {
+      const updatedAt = nowIso();
+      const followUpBody = payload.followUpBody;
+      await options.store.updateTask(taskId, (current) => ({
+        ...current,
+        updatedAt,
+        pin: {
+          ...current.pin,
+          body: followUpBody,
+        },
+        uiChangePacket: {
+          ...current.uiChangePacket,
+          userRequest: followUpBody,
+        },
+      }));
+    }
+
     void taskRunner
       .runTask({
         taskId,

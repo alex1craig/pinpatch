@@ -87,8 +87,8 @@ const keyboardShortcutsHelp = [
   "  Escape               Exit pin mode and close the composer",
   "  Cmd+Delete/Backspace Clear all pins (macOS)",
   "  Ctrl+Delete/Backspace Clear all pins (Windows/Linux)",
-  "  Enter                Submit pin request from the composer",
-  "  Shift+Enter          Insert a newline in the composer",
+  "  Enter                Submit from composer/follow-up textarea",
+  "  Shift+Enter          Insert a newline in composer/follow-up textarea",
 ].join("\n");
 
 const waitForSignal = async (): Promise<void> => {

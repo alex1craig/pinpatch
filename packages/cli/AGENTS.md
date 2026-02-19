@@ -32,6 +32,7 @@ Scope: `packages/cli/**`
 - Overlay bundle path is auto-resolved (and auto-built in workspace context when available).
 - `dev` checks target port reachability before startup.
 - Port conflicts should fail with actionable messaging.
+- Help text documents shared keyboard behavior for composer and completed-pin follow-up textareas (`Enter` submit, `Shift+Enter` newline).
 - Runtime cwd resolution prefers `INIT_CWD` and falls back to workspace-root inference when command cwd is the CLI package (common with `pnpm --filter ... exec`), before process cwd. This keeps `.pinpatch` artifacts and provider write scope targeting the project root.
 
 ## Commands

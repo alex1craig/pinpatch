@@ -18,6 +18,7 @@ import { buildUiChangePacket, captureScreenshot } from "../lib/ui-change-packet"
 export const OverlayApp = (): ReactElement => {
   const [pinMode, setPinMode] = useState(false);
   const [pins, setPins] = useState<OverlayPin[]>([]);
+  const [followUpDrafts, setFollowUpDrafts] = useState<Record<string, string>>({});
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [hoverBox, setHoverBox] = useState<DOMRect | null>(null);
   const [composer, setComposer] = useState<ComposerState | null>(null);
@@ -134,6 +135,15 @@ export const OverlayApp = (): ReactElement => {
       panelElementMapRef.current.delete(pin.id);
 
       setComposer((current) => (current?.pinId === pin.id ? null : current));
+      setFollowUpDrafts((current) => {
+        if (!(pin.id in current)) {
+          return current;
+        }
+
+        const next = { ...current };
+        delete next[pin.id];
+        return next;
+      });
       setHoveredPinId((current) => (current === pin.id ? null : current));
       setPins((existingPins) => existingPins.filter((entry) => entry.id !== pin.id));
     },
@@ -153,6 +163,7 @@ export const OverlayApp = (): ReactElement => {
     pinElementMapRef.current.clear();
     panelElementMapRef.current.clear();
     setComposer(null);
+    setFollowUpDrafts({});
     setHoveredPinId(null);
     setHoverBox(null);
     setPins([]);
@@ -257,6 +268,25 @@ export const OverlayApp = (): ReactElement => {
   }, [pins]);
 
   useEffect(() => {
+    setFollowUpDrafts((current) => {
+      let changed = false;
+      const pinIds = new Set(pins.map((pin) => pin.id));
+      const next: Record<string, string> = {};
+
+      for (const [pinId, value] of Object.entries(current)) {
+        if (!pinIds.has(pinId)) {
+          changed = true;
+          continue;
+        }
+
+        next[pinId] = value;
+      }
+
+      return changed ? next : current;
+    });
+  }, [pins]);
+
+  useEffect(() => {
     if (!composer) {
       return;
     }
@@ -287,15 +317,31 @@ export const OverlayApp = (): ReactElement => {
   }, [currentRouteKey, hoveredPinId, pins]);
 
   useEffect(() => {
+    const composerPinId = composer?.pinId;
+    setPins((existingPins) => {
+      let changed = false;
+      const next = existingPins.filter((pin) => {
+        const keep = pin.status !== "idle" || pin.id === composerPinId;
+        if (!keep) {
+          changed = true;
+        }
+        return keep;
+      });
+
+      return changed ? next : existingPins;
+    });
+  }, [composer, pins]);
+
+  useEffect(() => {
     if (!composer) {
       return;
     }
 
     const composerPin = pins.find((pin) => pin.id === composer.pinId);
     if (!composerPin || composerPin.routeKey !== currentRouteKey) {
-      setComposer(null);
+      dismissComposer();
     }
-  }, [composer, currentRouteKey, pins]);
+  }, [composer, currentRouteKey, dismissComposer, pins]);
 
   useEffect(() => {
     if (!composer) {
@@ -597,6 +643,58 @@ export const OverlayApp = (): ReactElement => {
     }
   };
 
+  const submitFollowUp = async (pin: OverlayPin): Promise<void> => {
+    const followUpBody = (followUpDrafts[pin.id] ?? "").trim();
+    if (!pin.taskId || !followUpBody) {
+      return;
+    }
+
+    const sessionId = randomId();
+    setFollowUpDrafts((current) => ({
+      ...current,
+      [pin.id]: ""
+    }));
+
+    setPins((existingPins) =>
+      existingPins.map((entry) =>
+        entry.id === pin.id
+          ? {
+              ...entry,
+              body: followUpBody,
+              status: "queued",
+              sessionId,
+              message: "Follow-up queued"
+            }
+          : entry
+      )
+    );
+
+    try {
+      const response = await postJson<{ eventsUrl: string }>(`${bridgeOrigin}/api/tasks/${pin.taskId}/submit`, {
+        sessionId,
+        provider: "codex",
+        model: "gpt-5.3-codex-spark",
+        dryRun: false,
+        debug: false,
+        followUpBody
+      });
+
+      subscribeToEvents(pin.id, response.eventsUrl);
+    } catch (error) {
+      setPins((existingPins) =>
+        existingPins.map((entry) =>
+          entry.id === pin.id
+            ? {
+                ...entry,
+                status: "error",
+                message: error instanceof Error ? error.message : "Follow-up failed"
+              }
+            : entry
+        )
+      );
+    }
+  };
+
   return (
     <>
       {hoverBox && pinMode ? (
@@ -661,10 +759,20 @@ export const OverlayApp = (): ReactElement => {
                   contentRef={(element) => {
                     setPanelElement(pin.id, element);
                   }}
+                  followUpBody={followUpDrafts[pin.id] ?? ""}
                   onCancel={() => clearPin(pin)}
                   onClear={() => clearPin(pin)}
+                  onFollowUpBodyChange={(value) => {
+                    setFollowUpDrafts((current) => ({
+                      ...current,
+                      [pin.id]: value
+                    }));
+                  }}
                   onRetry={() => {
                     void retryPin(pin);
+                  }}
+                  onSubmitFollowUp={() => {
+                    void submitFollowUp(pin);
                   }}
                   pin={pin}
                 />

@@ -44,7 +44,7 @@ pinpatch dev --target 3000
 
 4. Open the proxied app at `http://localhost:3030`.
 5. Press `c` to enter pin mode, click an element, write a request, and submit.
-6. Hover the pin to see progress. Completed pins auto-remove.
+6. Hover the pin to see progress. Completed pins remain visible, allow follow-up prompts, and can be closed from the status panel.
 
 ## CLI Commands
 
@@ -113,8 +113,8 @@ When using the proxied app during `pinpatch dev`:
 - `Escape`: exit pin mode and dismiss an open composer
 - `Cmd+Delete` / `Cmd+Backspace` (macOS): clear all pins
 - `Ctrl+Delete` / `Ctrl+Backspace` (non-macOS): clear all pins
-- `Enter`: submit pin request from composer
-- `Shift+Enter`: insert newline in composer
+- `Enter`: submit pin request from composer and submit completed-pin follow-ups
+- `Shift+Enter`: insert newline in composer/follow-up textareas
 
 ## Configuration
 

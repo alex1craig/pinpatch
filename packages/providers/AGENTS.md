@@ -24,6 +24,7 @@ Scope: `packages/providers/**`
 - Env overrides:
   - `PINPATCH_CODEX_BIN`
   - `PINPATCH_CODEX_ARGS`
+- Initial running progress message includes the command preview with only the user-typed prompt text (JSON-escaped), not full guardrail/system prompt content.
 - Deterministic fixture mode:
   - `PINPATCH_PROVIDER_FIXTURE=1` (also supports legacy `PINPATCH_CODEX_MOCK`)
 

@@ -108,6 +108,67 @@ test("pin mode toggles and submits a pin on home route", async ({ page }) => {
   await expect(pin).toHaveAttribute("data-status", "completed");
 });
 
+test("completed pin supports follow-up submit and clear", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  await createPinOnTarget(
+    page,
+    "upgrade-button",
+    "Move this button to the right and reduce padding.",
+  );
+
+  const pin = page.getByTestId("pinpatch-pin").first();
+  await expect(pin).toHaveAttribute("data-status", "completed", {
+    timeout: 10_000,
+  });
+
+  await pin.hover();
+  const followUpInput = page.getByTestId("pinpatch-followup-input");
+  await expect(followUpInput).toBeVisible();
+  await expect(page.getByTestId("pinpatch-clear-pin")).toBeVisible();
+  await expect(page.getByTestId("pinpatch-followup-submit")).toBeVisible();
+
+  await followUpInput.fill("Line one");
+  await followUpInput.press("Shift+Enter");
+  await followUpInput.type("Line two");
+  const followUpBody = "Line one\nLine two";
+  await expect(followUpInput).toHaveValue(followUpBody);
+
+  const waitForFollowUpSubmit = page.waitForRequest((request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (
+      request.method() !== "POST" ||
+      !/\/api\/tasks\/[^/]+\/submit$/.test(pathname)
+    ) {
+      return false;
+    }
+
+    const postData = request.postData();
+    if (!postData) {
+      return false;
+    }
+
+    try {
+      const payload = JSON.parse(postData) as { followUpBody?: string };
+      return payload.followUpBody === followUpBody;
+    } catch {
+      return false;
+    }
+  });
+
+  await followUpInput.press("Enter");
+  await waitForFollowUpSubmit;
+
+  await expect(pin).toHaveAttribute("data-status", "completed", {
+    timeout: 10_000,
+  });
+
+  await pin.hover();
+  await page.getByTestId("pinpatch-clear-pin").click();
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);
+});
+
 test("pin mode toggles and submits a pin on settings route", async ({
   page,
 }) => {
@@ -234,6 +295,22 @@ test("clicking outside an open composer removes the draft pin", async ({ page })
   await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
 
   await page.locator("body").click({ position: { x: 16, y: 16 }, force: true });
+
+  await expect(page.getByTestId("pinpatch-pin-input")).toHaveCount(0);
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);
+});
+
+test("reloading with an open composer does not leave an orphan idle pin", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  await openComposerOnTarget(page, "upgrade-button", {
+    expectComposerFocused: true,
+  });
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+
+  await page.reload();
+  await page.waitForSelector("#pinpatch-overlay-root");
 
   await expect(page.getByTestId("pinpatch-pin-input")).toHaveCount(0);
   await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);

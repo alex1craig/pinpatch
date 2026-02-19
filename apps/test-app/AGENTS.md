@@ -39,7 +39,13 @@ If routes change, update Playwright tests in the same PR.
   - pins persist after reload within the same tab session
 - Smoke tests should verify keyboard shortcut clearing of pins (`Meta+Backspace` on macOS, `Control+Delete` elsewhere) and that in-flight pins trigger bridge cancellation.
 - Smoke tests should verify that clicking outside an open composer dismisses it and removes the draft pin.
+- Smoke tests should verify reload behavior when a composer is open:
+  - draft composer pin is removed after reload (no orphan idle pin remains)
 - Smoke tests should verify composer keyboard behavior (`Shift+Enter` newline, `Enter` submit).
+- Smoke tests should verify completed-pin follow-up behavior:
+  - status panel follow-up textarea appears on completed pins
+  - follow-up supports `Shift+Enter` newline and `Enter` submit
+  - `Clear` removes the completed pin
 - Completion checks should prefer stable behavior hooks (for example `data-status`) over raw color class assertions.
 - Keep `data-testid` selectors stable for:
   - clickable target elements for pin placement
@@ -59,4 +65,5 @@ If routes change, update Playwright tests in the same PR.
 ## Notes
 
 - Playwright starts both the Vite test app and Pinpatch runtime.
+- Playwright webServer prebuilds `@pinpatch/core`, `@pinpatch/providers`, `@pinpatch/proxy`, `@pinpatch/ui`, and `@pinpatch/overlay` before starting Pinpatch runtime so workspace package `dist` exports resolve in clean environments.
 - E2E uses fixture provider mode for deterministic results.

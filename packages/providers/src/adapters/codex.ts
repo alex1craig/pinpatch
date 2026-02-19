@@ -48,12 +48,14 @@ export class CodexProviderAdapter implements ProviderAdapter {
       ...(input.dryRun ? ["--dry-run"] : []),
       input.prompt
     ];
+    const userPromptPreview = JSON.stringify(input.task.pin.body);
+    const commandPreview = `${bin} ${[...args.slice(0, -1), userPromptPreview].join(" ")}`;
 
     onProgress({
       taskId: input.taskId,
       sessionId: input.sessionId,
       status: "running",
-      message: `Running Codex command: ${bin} ${[...args.slice(0, -1), "<prompt>"].join(" ")}`,
+      message: `Running Codex command: ${commandPreview}`,
       percent: 5,
       timestamp: nowIso()
     });
