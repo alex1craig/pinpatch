@@ -186,7 +186,22 @@ describe("bridge API contracts", () => {
       "Implement only the requested UI change.",
     );
     expect(mockAdapter.lastPrompt).toContain(
+      "Treat the selected element as the primary edit target by default.",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "Do not move the change to ancestors, siblings, or page/global wrappers unless the request explicitly asks for a page-level or app-wide change or the selected element cannot satisfy the request without broader changes.",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "If the request is ambiguous, prefer changing the selected element directly.",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "If you cannot complete the request without touching unrelated areas, stop and report the exact blocker.",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
       "Never revert, overwrite, or clean up unrelated repo changes",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "Element attributes:",
     );
     expect(mockAdapter.lastPrompt).toContain(
       "Output format (**must follow**) must be exactly one sentence summarizing the changes made.",

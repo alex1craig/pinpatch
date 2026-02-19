@@ -1,8 +1,63 @@
-import { test, expect, type Page } from "@playwright/test";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 type PinPlacementOptions = {
   expectComposerFocused?: boolean;
   expectHoverHighlight?: boolean;
+};
+
+const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
+const screenshotsDir = path.join(repoRoot, ".pinpatch", "screenshots");
+
+const readPngDimensions = (buffer: Buffer): { width: number; height: number } | null => {
+  if (buffer.length < 24) {
+    return null;
+  }
+
+  const signature = "89504e470d0a1a0a";
+  if (buffer.subarray(0, 8).toString("hex") !== signature) {
+    return null;
+  }
+
+  if (buffer.toString("ascii", 12, 16) !== "IHDR") {
+    return null;
+  }
+
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20)
+  };
+};
+
+const assertTaskScreenshotCaptured = async (taskId: string): Promise<void> => {
+  const screenshotPath = path.join(screenshotsDir, `${taskId}.png`);
+
+  await expect
+    .poll(
+      async () => {
+        try {
+          const stats = await fs.stat(screenshotPath);
+          return stats.size;
+        } catch {
+          return 0;
+        }
+      },
+      { timeout: 5_000 },
+    )
+    .toBeGreaterThan(1_024);
+
+  const screenshot = await fs.readFile(screenshotPath);
+  const dimensions = readPngDimensions(screenshot);
+  expect(dimensions).not.toBeNull();
+
+  if (!dimensions) {
+    return;
+  }
+
+  expect(dimensions.width).toBeGreaterThan(1);
+  expect(dimensions.height).toBeGreaterThan(1);
 };
 
 const openComposerOnTarget = async (
@@ -30,6 +85,37 @@ const openComposerOnTarget = async (
   if (options?.expectComposerFocused) {
     await expect(input).toBeFocused();
   }
+};
+
+const openComposerOnLocator = async (
+  page: Page,
+  locator: Locator,
+  options?: PinPlacementOptions,
+): Promise<{ clickX: number; clickY: number }> => {
+  await page.locator("body").click({ position: { x: 16, y: 16 } });
+  await page.keyboard.press("c");
+
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) {
+    throw new Error("Target locator is not visible for pin placement.");
+  }
+
+  const clickX = box.x + box.width - 8;
+  const clickY = box.y + 20;
+  await page.mouse.move(clickX, clickY);
+
+  if (options?.expectHoverHighlight) {
+    await expect(page.getByTestId("pinpatch-hover-highlight")).toBeVisible();
+  }
+
+  await page.mouse.click(clickX, clickY);
+  const input = page.getByTestId("pinpatch-pin-input");
+  if (options?.expectComposerFocused) {
+    await expect(input).toBeFocused();
+  }
+
+  return { clickX, clickY };
 };
 
 const createPinOnTarget = async (
@@ -93,6 +179,15 @@ const assertRouteSmokeFlow = async (
 };
 
 test("pin mode toggles and submits a pin on home route", async ({ page }) => {
+  const createTaskResponsePromise = page.waitForResponse((response) => {
+    const pathname = new URL(response.url()).pathname;
+    return (
+      response.request().method() === "POST" &&
+      pathname === "/api/tasks" &&
+      response.status() === 201
+    );
+  });
+
   await assertRouteSmokeFlow(
     page,
     "/",
@@ -106,6 +201,12 @@ test("pin mode toggles and submits a pin on home route", async ({ page }) => {
   await page.waitForTimeout(2_000);
   await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
   await expect(pin).toHaveAttribute("data-status", "completed");
+
+  const createTaskResponse = await createTaskResponsePromise;
+  const createTaskPayload = (await createTaskResponse.json()) as {
+    taskId: string;
+  };
+  await assertTaskScreenshotCaptured(createTaskPayload.taskId);
 });
 
 test("completed pin supports follow-up submit and clear", async ({ page }) => {
@@ -177,6 +278,54 @@ test("pin mode toggles and submits a pin on settings route", async ({
     "/settings",
     "save-settings-button",
     "Make the save button full width on mobile.",
+  );
+});
+
+test("task payload targets clicked container when text duplicates an ancestor", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  const container = page.locator("main > div").first();
+  await openComposerOnLocator(page, container, {
+    expectHoverHighlight: true,
+    expectComposerFocused: true,
+  });
+
+  const waitForCreate = page.waitForRequest((request) => {
+    const pathname = new URL(request.url()).pathname;
+    return request.method() === "POST" && pathname === "/api/tasks";
+  });
+
+  const input = page.getByTestId("pinpatch-pin-input");
+  await input.fill("Make the background red");
+  await input.press("Enter");
+
+  const createRequest = await waitForCreate;
+  const postData = createRequest.postData();
+  expect(postData).toBeTruthy();
+  if (!postData) {
+    return;
+  }
+
+  const payload = JSON.parse(postData) as {
+    viewport: { width: number };
+    uiChangePacket: {
+      element: {
+        tag: string;
+        attributes: { class: string | null };
+        boundingBox: { width: number };
+      };
+    };
+  };
+
+  expect(payload.uiChangePacket.element.tag).toBe("div");
+  expect(payload.uiChangePacket.element.attributes.class).toContain(
+    "mx-auto flex w-full max-w-3xl",
+  );
+  expect(payload.uiChangePacket.element.boundingBox.width).toBeLessThan(
+    payload.viewport.width,
   );
 });
 

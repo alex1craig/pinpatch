@@ -22,6 +22,8 @@ export const ComposerPanel = ({
   onCancel,
   onSubmit
 }: ComposerPanelProps): ReactElement => {
+  const canSubmit = body.trim().length > 0;
+
   const onInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (event.nativeEvent.isComposing) {
       return;
@@ -29,6 +31,9 @@ export const ComposerPanel = ({
 
     if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
       event.preventDefault();
+      if (!canSubmit) {
+        return;
+      }
       onSubmit();
     }
   };
@@ -42,7 +47,7 @@ export const ComposerPanel = ({
           <Button onClick={onCancel} size="sm" type="button" variant="outline">
             Cancel
           </Button>
-          <Button data-testid="pinpatch-submit" onClick={onSubmit} size="sm" type="button">
+          <Button data-testid="pinpatch-submit" disabled={!canSubmit} onClick={onSubmit} size="sm" type="button">
             Submit
           </Button>
         </>

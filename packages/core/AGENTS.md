@@ -34,6 +34,7 @@ Scope: `packages/core/**`
 - Core owns durable on-disk artifacts in `.pinpatch`; do not move overlay tab/session UI state here (overlay uses browser `sessionStorage` by design).
 - Writes should stay atomic through fs helpers.
 - Provider prompt payloads (built in `runtime/task-runner.ts`) must keep strict scope guardrails so coding agents do not touch unrelated files or overwrite concurrent work.
+- Provider prompt payloads must treat the captured selected element as the default edit target; page/global-wrapper edits should only occur when explicitly requested.
 
 ## Bridge API Surface
 

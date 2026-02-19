@@ -27,16 +27,19 @@ Scope: `apps/overlay/**`
 - `Escape` exits pin mode and dismisses an open pin composer panel.
 - `Cmd+Delete` (macOS) or `Ctrl+Delete` (non-macOS) clears all pins and closes open pin streams.
 - Deleting an in-flight pin (`queued`/`running`) triggers bridge cancellation before removing it from the UI.
-- Pin mode cursor is globally overridden to the same 16px pin glyph used for idle pins (white fill with visible dark outline) via `html.pinpatch-pin-mode`.
+- Pin mode cursor uses a filled 16px map-pin glyph (white fill with dark outline), while idle pin circles use the same map-pin shape with white stroke and transparent fill.
 - Pins transition through statuses:
   - `idle -> queued -> running -> completed|error|cancelled|timeout`
 - Pins are route-scoped by `pathname + search`; only pins for the current route render, but all routes share one in-memory store.
 - Pins persist in browser `sessionStorage` for the life of the tab and are restored on reload/navigation.
 - Overlay persistence stays in `sessionStorage` (not `.pinpatch`) because overlay code runs in the browser sandbox, needs immediate local state updates, and should remain tab-scoped.
+- Screenshot capture is generated in-browser with `html2canvas` (`foreignObjectRendering` enabled) and filters out `#pinpatch-overlay-root`; clone-time color normalization converts `oklch/oklab` values to RGB before render.
 - Pin geometry is anchor-based:
   - resolve target by stored element hints when available
+  - target resolution must avoid drifting to ancestor containers when multiple nodes share the same text (prefer stronger hints such as class/test-id/id and deterministic tie-breaking)
   - fallback to viewport-relative ratios when target resolution fails
   - recalculate visible pin coordinates on resize
+- On composer submit, use the live clicked DOM node when still connected; only fall back to hint-based lookup when the original node is detached.
 - Hovering a pin highlights the current resolved target bounding box (or fallback rect when unresolved).
 - Completed pins remain visible until manually cleared.
 - Status and composer UI are rendered in popovers anchored to each pin trigger.
@@ -44,6 +47,7 @@ Scope: `apps/overlay/**`
 - Completed pins expose a follow-up textarea in the status panel with `Clear` (remove pin) and `Submit` (re-run same task with follow-up prompt) controls.
 - Error/cancelled/timeout pins expose retry and dismiss controls.
 - Pin composer actions use an outline-styled Cancel button and a primary Submit button.
+- Pin composer Submit stays disabled until the textarea has non-whitespace content.
 - When a pin is created, the pin textarea auto-focuses so typing can start immediately.
 - In the pin composer, `Enter` submits and `Shift+Enter` inserts a newline.
 - In completed pin follow-up textarea, `Enter` submits and `Shift+Enter` inserts a newline.

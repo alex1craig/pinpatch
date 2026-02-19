@@ -350,10 +350,17 @@ export class TaskRunner {
   }
 
   private buildPrompt(task: TaskRecord): string {
+    const selectedAttributes = JSON.stringify(
+      task.uiChangePacket.element.attributes,
+    );
+
     return [
       "You are implementing a UI change request from Pinpatch.",
       "Scope guardrails (must follow):",
       "- Implement only the requested UI change.",
+      "- Treat the selected element as the primary edit target by default.",
+      "- Do not move the change to ancestors, siblings, or page/global wrappers unless the request explicitly asks for a page-level or app-wide change or the selected element cannot satisfy the request without broader changes.",
+      "- If the request is ambiguous, prefer changing the selected element directly.",
       "- Do not edit, reformat, or reorganize unrelated files.",
       "- Never revert, overwrite, or clean up unrelated repo changes (other agents may be editing in parallel).",
       "- If unrelated files are modified or dirty, leave them untouched.",
@@ -361,6 +368,7 @@ export class TaskRunner {
       `User request: ${task.pin.body}`,
       `Page URL: ${task.url}`,
       `Element: <${task.uiChangePacket.element.tag}> text=\"${task.uiChangePacket.element.text ?? ""}\"`,
+      `Element attributes: ${selectedAttributes}`,
       `Bounding box: ${JSON.stringify(task.uiChangePacket.element.boundingBox)}`,
       `Nearby text: ${task.uiChangePacket.nearbyText.join(" | ")}`,
       `DOM snippet: ${task.uiChangePacket.domSnippet}`,

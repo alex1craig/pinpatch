@@ -46,6 +46,7 @@ If routes change, update Playwright tests in the same PR.
   - status panel follow-up textarea appears on completed pins
   - follow-up supports `Shift+Enter` newline and `Enter` submit
   - `Clear` removes the completed pin
+- Smoke tests should verify generated `.pinpatch/screenshots/<taskId>.png` artifacts are non-empty captures (not 1x1 fallbacks).
 - Completion checks should prefer stable behavior hooks (for example `data-status`) over raw color class assertions.
 - Keep `data-testid` selectors stable for:
   - clickable target elements for pin placement

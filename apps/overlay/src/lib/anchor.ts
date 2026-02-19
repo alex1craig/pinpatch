@@ -34,12 +34,27 @@ const escapeSelector = (value: string): string => {
   return value.replace(/(["\\])/g, "\\$1");
 };
 
+const normalizeClassHint = (value: string | null): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return normalized || undefined;
+};
+
 export const buildTargetHint = (element: HTMLElement): TargetHint => {
   return {
     testId: sanitizeTextHint(element.getAttribute("data-testid")),
     id: sanitizeTextHint(element.id),
     ariaLabel: sanitizeTextHint(element.getAttribute("aria-label")),
     tag: element.tagName.toLowerCase(),
+    className: normalizeClassHint(element.getAttribute("class")),
     text: sanitizeTextHint(element.textContent)
   };
 };
@@ -60,8 +75,46 @@ const normalizeTargetHint = (value: unknown): TargetHint | null => {
     testId: sanitizeTextHint(typeof record.testId === "string" ? record.testId : null),
     id: sanitizeTextHint(typeof record.id === "string" ? record.id : null),
     ariaLabel: sanitizeTextHint(typeof record.ariaLabel === "string" ? record.ariaLabel : null),
+    className: normalizeClassHint(typeof record.className === "string" ? record.className : null),
     text: sanitizeTextHint(typeof record.text === "string" ? record.text : null)
   };
+};
+
+const getNodeDepth = (node: HTMLElement): number => {
+  let depth = 0;
+  let cursor: HTMLElement | null = node;
+
+  while (cursor?.parentElement) {
+    depth += 1;
+    cursor = cursor.parentElement;
+  }
+
+  return depth;
+};
+
+const rankCandidates = (candidates: HTMLElement[]): HTMLElement | null => {
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const [best] = [...candidates].sort((left, right) => {
+    const depthDelta = getNodeDepth(right) - getNodeDepth(left);
+    if (depthDelta !== 0) {
+      return depthDelta;
+    }
+
+    const leftRect = left.getBoundingClientRect();
+    const rightRect = right.getBoundingClientRect();
+    const leftArea = Math.max(leftRect.width * leftRect.height, 0);
+    const rightArea = Math.max(rightRect.width * rightRect.height, 0);
+    if (leftArea === rightArea) {
+      return 0;
+    }
+
+    return leftArea < rightArea ? -1 : 1;
+  });
+
+  return best ?? null;
 };
 
 export const resolveTargetFromHint = (targetHint: TargetHint): HTMLElement | null => {
@@ -80,6 +133,9 @@ export const resolveTargetFromHint = (targetHint: TargetHint): HTMLElement | nul
   }
 
   const tag = targetHint.tag || "div";
+  let candidates = Array.from(document.querySelectorAll(tag)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
 
   if (targetHint.ariaLabel) {
     const byAria = document.querySelector(`${tag}[aria-label="${escapeSelector(targetHint.ariaLabel)}"]`);
@@ -88,24 +144,42 @@ export const resolveTargetFromHint = (targetHint: TargetHint): HTMLElement | nul
     }
   }
 
+  let hasHeuristic = false;
+
+  if (targetHint.className) {
+    const classMatches = candidates.filter((node) => normalizeClassHint(node.getAttribute("class")) === targetHint.className);
+    const [onlyClassMatch] = classMatches;
+    if (classMatches.length === 1 && onlyClassMatch) {
+      return onlyClassMatch;
+    }
+
+    if (classMatches.length > 1) {
+      candidates = classMatches;
+      hasHeuristic = true;
+    }
+  }
+
   if (targetHint.text) {
     const text = targetHint.text.trim();
     if (text) {
-      const candidates = document.querySelectorAll(tag);
-      for (const node of candidates) {
-        if (!(node instanceof HTMLElement)) {
-          continue;
-        }
+      const textMatches = candidates.filter((node) => node.textContent?.trim() === text);
+      const [onlyTextMatch] = textMatches;
+      if (textMatches.length === 1 && onlyTextMatch) {
+        return onlyTextMatch;
+      }
 
-        const candidateText = node.textContent?.trim();
-        if (candidateText === text) {
-          return node;
-        }
+      if (textMatches.length > 1) {
+        candidates = textMatches;
+        hasHeuristic = true;
       }
     }
   }
 
-  return null;
+  if (!hasHeuristic) {
+    return null;
+  }
+
+  return rankCandidates(candidates);
 };
 
 export const buildAnchor = (

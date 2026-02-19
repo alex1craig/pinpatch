@@ -505,9 +505,20 @@ export const OverlayApp = (): ReactElement => {
       return;
     }
 
-    const pin = withResolvedGeometry(existingPin);
-    const targetElement = resolveTargetFromHint(pin.anchor.targetHint) ?? target.node;
+    const liveTarget = target.node.isConnected ? target.node : null;
+    const targetElement = liveTarget ?? resolveTargetFromHint(existingPin.anchor.targetHint) ?? target.node;
     const rect = targetElement.getBoundingClientRect();
+    const pin = {
+      ...existingPin,
+      x: rect.left + rect.width * existingPin.anchor.targetOffsetRatio.x,
+      y: rect.top + rect.height * existingPin.anchor.targetOffsetRatio.y,
+      targetRect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height
+      }
+    };
 
     setComposer(null);
 

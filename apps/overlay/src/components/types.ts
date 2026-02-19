@@ -5,6 +5,7 @@ export type TargetHint = {
   id?: string;
   ariaLabel?: string;
   tag: string;
+  className?: string;
   text?: string;
 };
 
