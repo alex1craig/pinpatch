@@ -32,5 +32,5 @@ export const PinStatusIcon = ({ status }: { status: PinStatus }): ReactElement =
     return <AlertCircle className="h-4 w-4" />;
   }
 
-  return <PinGlyph stroke="#ffffff" />;
+  return <PinGlyph stroke="#ffffff" strokeWidth="1" />;
 };
