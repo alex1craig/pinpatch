@@ -6,6 +6,7 @@ import { PanelShell } from "./panel-shell";
 type ComposerPanelProps = {
   body: string;
   container?: HTMLElement | null;
+  contentRef?(element: HTMLDivElement | null): void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   onBodyChange(value: string): void;
   onCancel(): void;
@@ -15,6 +16,7 @@ type ComposerPanelProps = {
 export const ComposerPanel = ({
   body,
   container,
+  contentRef,
   inputRef,
   onBodyChange,
   onCancel,
@@ -25,7 +27,7 @@ export const ComposerPanel = ({
       return;
     }
 
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
       event.preventDefault();
       onSubmit();
     }
@@ -33,8 +35,8 @@ export const ComposerPanel = ({
 
   return (
     <PanelShell
-      className="w-80"
       container={container}
+      contentRef={contentRef}
       footer={
         <>
           <Button onClick={onCancel} size="sm" type="button" variant="outline">

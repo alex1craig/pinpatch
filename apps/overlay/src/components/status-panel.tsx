@@ -26,7 +26,6 @@ export const StatusPanel = ({
 
   return (
     <PanelShell
-      className="min-w-60"
       container={container}
       contentRef={contentRef}
       footer={

@@ -1,10 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const createPinOnTarget = async (
+type PinPlacementOptions = {
+  expectComposerFocused?: boolean;
+  expectHoverHighlight?: boolean;
+};
+
+const openComposerOnTarget = async (
   page: Page,
   targetTestId: string,
-  pin: string,
-  options?: { expectHoverHighlight?: boolean; expectComposerFocused?: boolean },
+  options?: PinPlacementOptions,
 ): Promise<void> => {
   await page.locator("body").click({ position: { x: 16, y: 16 } });
   await page.keyboard.press("c");
@@ -26,11 +30,18 @@ const createPinOnTarget = async (
   if (options?.expectComposerFocused) {
     await expect(input).toBeFocused();
   }
+};
+
+const createPinOnTarget = async (
+  page: Page,
+  targetTestId: string,
+  pin: string,
+  options?: PinPlacementOptions,
+): Promise<void> => {
+  await openComposerOnTarget(page, targetTestId, options);
+  const input = page.getByTestId("pinpatch-pin-input");
   await input.fill(pin);
-  const submitShortcut = await page.evaluate(() => {
-    return /mac/i.test(navigator.platform) ? "Meta+Enter" : "Control+Enter";
-  });
-  await input.press(submitShortcut);
+  await input.press("Enter");
 
   await expect(page.getByTestId("pinpatch-pin").first()).toBeVisible();
 };
@@ -211,4 +222,39 @@ test("shortcut clears all pins", async ({ page }) => {
 
   await waitForCancel;
   await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);
+});
+
+test("clicking outside an open composer removes the draft pin", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  await openComposerOnTarget(page, "upgrade-button", {
+    expectComposerFocused: true,
+  });
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+
+  await page.locator("body").click({ position: { x: 16, y: 16 }, force: true });
+
+  await expect(page.getByTestId("pinpatch-pin-input")).toHaveCount(0);
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);
+});
+
+test("shift-enter inserts a newline and enter submits", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  await openComposerOnTarget(page, "upgrade-button", {
+    expectComposerFocused: true,
+  });
+
+  const input = page.getByTestId("pinpatch-pin-input");
+  await input.fill("Line one");
+  await input.press("Shift+Enter");
+  await input.type("Line two");
+
+  await expect(input).toHaveValue("Line one\nLine two");
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+
+  await input.press("Enter");
+  await expect(page.getByTestId("pinpatch-pin-input")).toHaveCount(0);
 });

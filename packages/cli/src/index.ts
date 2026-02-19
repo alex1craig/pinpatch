@@ -81,6 +81,16 @@ type TasksCommandOptions = {
   debug?: boolean;
 };
 
+const keyboardShortcutsHelp = [
+  "Keyboard shortcuts (when using `pinpatch dev` in the proxied app):",
+  "  c                    Toggle pin mode",
+  "  Escape               Exit pin mode and close the composer",
+  "  Cmd+Delete/Backspace Clear all pins (macOS)",
+  "  Ctrl+Delete/Backspace Clear all pins (Windows/Linux)",
+  "  Enter                Submit pin request from the composer",
+  "  Shift+Enter          Insert a newline in the composer",
+].join("\n");
+
 const waitForSignal = async (): Promise<void> => {
   await new Promise<void>((resolve) => {
     const onSignal = () => {
@@ -388,6 +398,10 @@ const runTasks = async (options: TasksCommandOptions): Promise<void> => {
 
 const program = new Command();
 program.name("pinpatch").description("Pinpatch CLI").version("0.1.0");
+program.addHelpText(
+  "after",
+  `\nQuick reference:\n  pinpatch dev --target <port>\n  pinpatch implement <taskId>\n  pinpatch tasks\n  pinpatch tasks --prune\n\n${keyboardShortcutsHelp}\n`,
+);
 
 program
   .command("dev")

@@ -38,6 +38,8 @@ If routes change, update Playwright tests in the same PR.
   - pins reappear with correct alignment when returning to their route
   - pins persist after reload within the same tab session
 - Smoke tests should verify keyboard shortcut clearing of pins (`Meta+Backspace` on macOS, `Control+Delete` elsewhere) and that in-flight pins trigger bridge cancellation.
+- Smoke tests should verify that clicking outside an open composer dismisses it and removes the draft pin.
+- Smoke tests should verify composer keyboard behavior (`Shift+Enter` newline, `Enter` submit).
 - Completion checks should prefer stable behavior hooks (for example `data-status`) over raw color class assertions.
 - Keep `data-testid` selectors stable for:
   - clickable target elements for pin placement

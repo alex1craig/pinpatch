@@ -43,6 +43,8 @@ Scope: `apps/overlay/**`
 - Error/cancelled/timeout pins expose retry and dismiss controls.
 - Pin composer actions use an outline-styled Cancel button and a primary Submit button.
 - When a pin is created, the pin textarea auto-focuses so typing can start immediately.
+- In the pin composer, `Enter` submits and `Shift+Enter` inserts a newline.
+- Clicking outside an open pin composer dismisses it and deletes the draft pin.
 - Restored in-flight pins (`queued`/`running` with `taskId` + `sessionId`) re-subscribe to SSE progress streams.
 
 ## Layering and Theme Rules

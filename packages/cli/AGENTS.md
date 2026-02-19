@@ -12,6 +12,7 @@ Scope: `packages/cli/**`
 
 ## Commands Implemented
 
+- `pinpatch --help` (includes command usage + overlay keyboard shortcuts)
 - `pinpatch dev`
 - `pinpatch implement <taskId>`
 - `pinpatch tasks`

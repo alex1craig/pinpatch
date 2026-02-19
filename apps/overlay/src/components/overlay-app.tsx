@@ -298,6 +298,29 @@ export const OverlayApp = (): ReactElement => {
   }, [composer, currentRouteKey, pins]);
 
   useEffect(() => {
+    if (!composer) {
+      return;
+    }
+
+    const onMouseDown = (event: MouseEvent): void => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+
+      const composerPanel = panelElementMapRef.current.get(composer.pinId);
+      if (composerPanel?.contains(target)) {
+        return;
+      }
+
+      dismissComposer();
+    };
+
+    window.addEventListener("mousedown", onMouseDown, true);
+    return () => window.removeEventListener("mousedown", onMouseDown, true);
+  }, [composer, dismissComposer]);
+
+  useEffect(() => {
     let frame = 0;
 
     const scheduleResolve = (): void => {
@@ -430,23 +453,29 @@ export const OverlayApp = (): ReactElement => {
       return;
     }
 
-    const existingPin = pins.find((entry) => entry.id === composer.pinId);
-    if (!existingPin || !composer.body.trim()) {
+    const { body, pinId, target } = composer;
+    const existingPin = pins.find((entry) => entry.id === pinId);
+    if (!existingPin || !body.trim()) {
       return;
     }
 
     const pin = withResolvedGeometry(existingPin);
-    const targetElement = resolveTargetFromHint(pin.anchor.targetHint) ?? composer.target.node;
+    const targetElement = resolveTargetFromHint(pin.anchor.targetHint) ?? target.node;
     const rect = targetElement.getBoundingClientRect();
+
+    setComposer(null);
 
     setPins((existingPins) =>
       existingPins.map((entry) =>
-        entry.id === pin.id
+        entry.id === pinId
           ? {
             ...entry,
             x: pin.x,
             y: pin.y,
-            targetRect: pin.targetRect
+            targetRect: pin.targetRect,
+            body,
+            status: "queued",
+            message: "Creating task..."
           }
           : entry
       )
@@ -460,21 +489,8 @@ export const OverlayApp = (): ReactElement => {
       clientTaskId,
       rect,
       targetElement,
-      userRequest: composer.body
+      userRequest: body
     });
-
-    setPins((existingPins) =>
-      existingPins.map((entry) =>
-        entry.id === composer.pinId
-          ? {
-            ...entry,
-            body: composer.body,
-            status: "queued",
-            message: "Creating task..."
-          }
-          : entry
-      )
-    );
 
     try {
       const createResponse = await postJson<{
@@ -491,7 +507,7 @@ export const OverlayApp = (): ReactElement => {
         pin: {
           x: pin.x,
           y: pin.y,
-          body: composer.body
+          body
         },
         uiChangePacket,
         screenshotPath: `.pinpatch/screenshots/${clientTaskId}.png`,
@@ -509,7 +525,7 @@ export const OverlayApp = (): ReactElement => {
 
       setPins((existingPins) =>
         existingPins.map((entry) =>
-          entry.id === composer.pinId
+          entry.id === pinId
             ? {
               ...entry,
               taskId: createResponse.taskId,
@@ -521,12 +537,11 @@ export const OverlayApp = (): ReactElement => {
         )
       );
 
-      subscribeToEvents(composer.pinId, createResponse.eventsUrl);
-      setComposer(null);
+      subscribeToEvents(pinId, createResponse.eventsUrl);
     } catch (error) {
       setPins((existingPins) =>
         existingPins.map((entry) =>
-          entry.id === composer.pinId
+          entry.id === pinId
             ? {
               ...entry,
               status: "error",
@@ -659,6 +674,9 @@ export const OverlayApp = (): ReactElement => {
                 <ComposerPanel
                   body={composer.body}
                   container={overlayContainer}
+                  contentRef={(element) => {
+                    setPanelElement(pin.id, element);
+                  }}
                   inputRef={composerInputRef}
                   onBodyChange={(value) => {
                     setComposer((current) => (current ? { ...current, body: value } : current));

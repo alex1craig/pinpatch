@@ -29,6 +29,7 @@ This file is the top-level operating guide for agents working in this repository
 ## Current Product Behavior (MVP)
 
 - CLI commands:
+  - `pinpatch --help` (includes command usage + overlay keyboard shortcuts)
   - `pinpatch dev --target <port>`
   - `pinpatch implement <taskId>`
   - `pinpatch tasks`

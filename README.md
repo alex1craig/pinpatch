@@ -48,6 +48,10 @@ pinpatch dev --target 3000
 
 ## CLI Commands
 
+### `pinpatch --help`
+
+Shows command usage and overlay keyboard shortcuts.
+
 ### `pinpatch dev`
 
 Starts the bridge + reverse proxy runtime.
@@ -100,6 +104,17 @@ Default prune policy:
 
 - logs older than 14 days
 - orphan sessions older than 24 hours
+
+## Overlay Keyboard Shortcuts
+
+When using the proxied app during `pinpatch dev`:
+
+- `c`: toggle pin mode
+- `Escape`: exit pin mode and dismiss an open composer
+- `Cmd+Delete` / `Cmd+Backspace` (macOS): clear all pins
+- `Ctrl+Delete` / `Ctrl+Backspace` (non-macOS): clear all pins
+- `Enter`: submit pin request from composer
+- `Shift+Enter`: insert newline in composer
 
 ## Configuration
 
