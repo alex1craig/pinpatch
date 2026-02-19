@@ -17,7 +17,7 @@ export const PinGlyph = ({ stroke = "#000000", strokeWidth = "2" }: PinGlyphProp
   return (
     <svg
       aria-hidden="true"
-      className="h-4 w-4"
+      className="size-[14px]"
       fill="none"
       stroke={stroke}
       strokeLinecap="round"

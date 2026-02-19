@@ -1,38 +1,59 @@
 import type { ReactElement } from "react";
-import { Button } from "@pinpatch/ui/components/button";
-
-const cardClassName = "space-y-4 rounded-lg border border-slate-200 bg-white p-3";
 
 const HomePage = (): ReactElement => {
   return (
-    <div className={cardClassName}>
-      <h2 className="text-lg font-semibold">Billing Card</h2>
-      <p className="text-sm text-slate-600">Pricing details and actions for upgrade flow testing.</p>
-      <div className="flex items-center gap-4">
-        <Button data-testid="upgrade-button" className="px-6 py-3 text-base">
-          Upgrade
-        </Button>
-        <Button variant="secondary" data-testid="cancel-button">
-          Cancel
-        </Button>
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+      <header className="flex flex-col gap-2">
+        <h2 className="m-0 text-lg font-semibold">Billing Card</h2>
+        <p className="m-0 text-sm text-muted-foreground">Pricing details and actions for upgrade flow testing.</p>
+      </header>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+            data-testid="upgrade-button"
+            type="button"
+          >
+            Upgrade
+          </button>
+          <button
+            className="inline-flex h-9 items-center justify-center rounded-md bg-secondary px-4 text-sm font-medium text-secondary-foreground hover:bg-secondary/90"
+            data-testid="cancel-button"
+            type="button"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 };
 
 const SettingsPage = (): ReactElement => {
   return (
-    <div className={cardClassName}>
-      <h2 className="text-lg font-semibold">Profile Settings</h2>
-      <p className="text-sm text-slate-600">Second route for multi-page smoke testing and pin placement checks.</p>
-      <div className="space-y-2">
-        <div className="rounded-md border border-slate-200 p-3">
-          <div className="text-sm font-medium">Notifications</div>
-          <div className="text-xs text-slate-600">Email me when team usage exceeds limits.</div>
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+      <header className="flex flex-col gap-2">
+        <h2 className="m-0 text-lg font-semibold">Profile Settings</h2>
+        <p className="m-0 text-sm text-muted-foreground">Second route for multi-page smoke testing and pin placement checks.</p>
+      </header>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1 rounded-md border border-border p-3">
+          <div className="text-sm font-semibold">Notifications</div>
+          <p className="m-0 text-sm text-muted-foreground">Email me when team usage exceeds limits.</p>
         </div>
-        <Button data-testid="save-settings-button">Save settings</Button>
+        <div>
+          <button
+            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            data-testid="save-settings-button"
+            type="button"
+          >
+            Save settings
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 };
 
@@ -40,27 +61,35 @@ export const App = (): ReactElement => {
   const pathname = window.location.pathname;
   const isSettingsRoute = pathname === "/settings";
 
-  return (
-    <main className="mx-auto max-w-3xl p-8 text-slate-900">
-      <h1 className="mb-3 text-3xl font-bold">Pinpatch Smoke Test App</h1>
-      <p className="mb-6 text-slate-600">Use this page with `pinpatch dev --target 3000` for end-to-end smoke checks.</p>
-      <div className="mb-6 flex items-center gap-2 text-sm">
-        <a
-          href="/"
-          className={`rounded border px-3 py-1 ${!isSettingsRoute ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 text-slate-700"}`}
-        >
-          Home
-        </a>
-        <a
-          href="/settings"
-          className={`rounded border px-3 py-1 ${isSettingsRoute ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 text-slate-700"}`}
-          data-testid="settings-route-link"
-        >
-          Settings
-        </a>
-      </div>
+  const navLinkClassName =
+    "inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground";
 
-      {isSettingsRoute ? <SettingsPage /> : <HomePage />}
+  return (
+    <main className="pinpatch-ui-theme min-h-screen bg-background text-foreground" data-theme="light">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-8">
+        <header className="flex flex-col gap-2">
+          <h1 className="m-0 text-3xl font-bold tracking-tight">
+            Pinpatch Smoke Test App</h1>
+          <p className="m-0 text-sm text-muted-foreground">
+            Use this page with <code>pinpatch dev --target 3000</code> for end-to-end smoke checks.
+          </p>
+        </header>
+
+        <nav className="flex items-center gap-2">
+          <a className={`${navLinkClassName} ${!isSettingsRoute ? "border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" : ""}`} href="/">
+            Home
+          </a>
+          <a
+            className={`${navLinkClassName} ${isSettingsRoute ? "border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" : ""}`}
+            data-testid="settings-route-link"
+            href="/settings"
+          >
+            Settings
+          </a>
+        </nav>
+
+        {isSettingsRoute ? <SettingsPage /> : <HomePage />}
+      </div>
     </main>
   );
 };

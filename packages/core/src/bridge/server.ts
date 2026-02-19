@@ -8,7 +8,7 @@ import {
   SubmitTaskRequestSchema,
   type ProviderName,
   type SseEvent,
-  type TaskRecord
+  type TaskRecord,
 } from "../contracts/index";
 import { generateTaskId, nowIso } from "../runtime/ids";
 import type { ArtifactStore } from "../storage/artifact-store";
@@ -17,9 +17,13 @@ import { TaskEventBus } from "./event-bus";
 import { TaskRunner } from "../runtime/task-runner";
 import type { ProviderAdapter } from "../contracts/provider";
 
-const sanitizeTaskId = (candidate: string): string => candidate.replace(/[^a-zA-Z0-9-_]/g, "-").slice(0, 64);
+const sanitizeTaskId = (candidate: string): string =>
+  candidate.replace(/[^a-zA-Z0-9-_]/g, "-").slice(0, 64);
 
-const serializeSse = (eventName: "progress" | "terminal" | "heartbeat", payload: SseEvent): string => {
+const serializeSse = (
+  eventName: "progress" | "terminal" | "heartbeat",
+  payload: SseEvent,
+): string => {
   return `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
 };
 
@@ -49,7 +53,10 @@ export type BridgeServerHandle = {
   stop(): Promise<void>;
 };
 
-const resolveAvailableTaskId = async (store: ArtifactStore, initialTaskId?: string): Promise<string> => {
+const resolveAvailableTaskId = async (
+  store: ArtifactStore,
+  initialTaskId?: string,
+): Promise<string> => {
   if (initialTaskId) {
     const candidate = sanitizeTaskId(initialTaskId);
     const existing = await store.getTask(candidate);
@@ -71,7 +78,9 @@ const resolveAvailableTaskId = async (store: ArtifactStore, initialTaskId?: stri
   throw new Error("Failed to allocate a unique task id");
 };
 
-export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHandle => {
+export const createBridgeServer = (
+  options: BridgeServerOptions,
+): BridgeServerHandle => {
   const app = express();
   const eventBus = new TaskEventBus();
   const taskRunner = new TaskRunner({
@@ -79,7 +88,7 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
     store: options.store,
     logger: options.logger,
     eventBus,
-    getProviderAdapter: options.getProviderAdapter
+    getProviderAdapter: options.getProviderAdapter,
   });
 
   app.use(cors());
@@ -99,13 +108,16 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
         res.status(200).send(script);
         return;
       } catch {
-        options.logger.warn("Overlay bundle not found, serving fallback overlay script", {
-          component: "bridge",
-          event: "overlay.fallback",
-          meta: {
-            overlayScriptPath: requestedPath
-          }
-        });
+        options.logger.warn(
+          "Overlay bundle not found, serving fallback overlay script",
+          {
+            component: "bridge",
+            event: "overlay.fallback",
+            meta: {
+              overlayScriptPath: requestedPath,
+            },
+          },
+        );
       }
     }
 
@@ -118,17 +130,23 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
     if (!parsed.success) {
       res.status(400).json({
         error: "Invalid request",
-        details: parsed.error.flatten()
+        details: parsed.error.flatten(),
       });
       return;
     }
 
     const payload = parsed.data;
-    const taskId = await resolveAvailableTaskId(options.store, payload.clientTaskId);
+    const taskId = await resolveAvailableTaskId(
+      options.store,
+      payload.clientTaskId,
+    );
 
     let screenshotPath = payload.screenshotPath;
     if (payload.screenshotDataUrl) {
-      screenshotPath = await options.store.writeScreenshot(taskId, payload.screenshotDataUrl);
+      screenshotPath = await options.store.writeScreenshot(
+        taskId,
+        payload.screenshotDataUrl,
+      );
     }
 
     const createdAt = nowIso();
@@ -141,16 +159,15 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
       url: payload.url,
       viewport: payload.viewport,
       pin: payload.pin,
-      comment: payload.comment,
       uiChangePacket: {
         ...payload.uiChangePacket,
         screenshotPath,
-        userRequest: payload.comment.body
+        userRequest: payload.pin.body,
       },
       screenshotPath,
       sessions: [payload.sessionId],
       latestSessionId: payload.sessionId,
-      changedFiles: []
+      changedFiles: [],
     };
 
     await options.store.createTask(taskRecord);
@@ -161,8 +178,8 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
       sessionId: payload.sessionId,
       event: "task.created",
       meta: {
-        screenshotPath
-      }
+        screenshotPath,
+      },
     });
 
     res.status(201).json({
@@ -170,7 +187,7 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
       sessionId: payload.sessionId,
       status: "created",
       taskPath: `.pinpatch/tasks/${taskId}.json`,
-      eventsUrl: `/api/tasks/${taskId}/events?sessionId=${payload.sessionId}`
+      eventsUrl: `/api/tasks/${taskId}/events?sessionId=${payload.sessionId}`,
     });
   });
 
@@ -191,7 +208,7 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
     if (!parsed.success) {
       res.status(400).json({
         error: "Invalid request",
-        details: parsed.error.flatten()
+        details: parsed.error.flatten(),
       });
       return;
     }
@@ -205,7 +222,7 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
         provider: payload.provider,
         model: payload.model,
         dryRun: payload.dryRun,
-        debug: payload.debug
+        debug: payload.debug,
       })
       .catch((error: unknown) => {
         options.logger.error("Provider task execution failed", {
@@ -214,8 +231,8 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
           sessionId: payload.sessionId,
           event: "task.run.error",
           meta: {
-            error: error instanceof Error ? error.message : String(error)
-          }
+            error: error instanceof Error ? error.message : String(error),
+          },
         });
       });
 
@@ -225,7 +242,7 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
       sessionId: payload.sessionId,
       status: "queued",
       acceptedAt,
-      eventsUrl: `/api/tasks/${taskId}/events?sessionId=${payload.sessionId}`
+      eventsUrl: `/api/tasks/${taskId}/events?sessionId=${payload.sessionId}`,
     });
   });
 
@@ -246,7 +263,9 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
     const taskId = String(req.params.taskId ?? "");
     const sessionId = String(req.query.sessionId ?? "");
     if (!taskId || !sessionId) {
-      res.status(400).json({ error: "taskId and sessionId query params are required" });
+      res
+        .status(400)
+        .json({ error: "taskId and sessionId query params are required" });
       return;
     }
 
@@ -256,13 +275,18 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
     res.flushHeaders();
 
     const push = (event: SseEvent): void => {
-      const type = event.type === "terminal" ? "terminal" : event.type === "heartbeat" ? "heartbeat" : "progress";
+      const type =
+        event.type === "terminal"
+          ? "terminal"
+          : event.type === "heartbeat"
+            ? "heartbeat"
+            : "progress";
       res.write(serializeSse(type, event));
     };
 
     push({
       type: "heartbeat",
-      timestamp: nowIso()
+      timestamp: nowIso(),
     });
 
     const unsubscribe = eventBus.subscribe(taskId, sessionId, push);
@@ -270,7 +294,7 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
     const heartbeat = setInterval(() => {
       push({
         type: "heartbeat",
-        timestamp: nowIso()
+        timestamp: nowIso(),
       });
     }, 15_000);
 
@@ -296,10 +320,13 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
           resolve();
         });
       });
-      options.logger.info(`Bridge listening on http://localhost:${options.port}`, {
-        component: "bridge",
-        event: "bridge.started"
-      });
+      options.logger.info(
+        `Bridge listening on http://localhost:${options.port}`,
+        {
+          component: "bridge",
+          event: "bridge.started",
+        },
+      );
     },
     async stop() {
       await new Promise<void>((resolve) => {
@@ -307,8 +334,8 @@ export const createBridgeServer = (options: BridgeServerOptions): BridgeServerHa
       });
       options.logger.info("Bridge stopped", {
         component: "bridge",
-        event: "bridge.stopped"
+        event: "bridge.stopped",
       });
-    }
+    },
   };
 };

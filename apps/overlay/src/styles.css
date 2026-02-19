@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@pinpatch/ui/globals.css";
 
 @source "./**/*.{ts,tsx}";
 @source "../../../packages/ui/src/**/*.{ts,tsx}";
@@ -10,8 +11,8 @@
   pointer-events: none;
 }
 
-html.pinpatch-comment-mode,
-html.pinpatch-comment-mode body,
-html.pinpatch-comment-mode body * {
-  cursor: var(--pinpatch-comment-cursor) !important;
+html.pinpatch-pin-mode,
+html.pinpatch-pin-mode body,
+html.pinpatch-pin-mode body * {
+  cursor: var(--pinpatch-pin-cursor) !important;
 }

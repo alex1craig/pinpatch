@@ -17,8 +17,16 @@ If routes change, update Playwright tests in the same PR.
 ## Key Files
 
 - `apps/test-app/src/App.tsx`: route UI and test targets.
+- `apps/test-app/src/styles.css`: Tailwind/globals imports and source scanning only.
 - `apps/test-app/tests/pinpatch.spec.ts`: smoke tests (must cover all routes).
 - `apps/test-app/playwright.config.ts`: local web server orchestration for e2e.
+
+## Styling Contract
+
+- `apps/test-app/src/styles.css` must import `@pinpatch/ui/globals.css`.
+- The app should opt into shared theme with `.pinpatch-ui-theme`.
+- `apps/test-app/src/App.tsx` should use basic HTML elements only (no shared UI React components).
+- Prefer Tailwind utility classes in TSX; avoid custom CSS rules in `styles.css`.
 
 ## Testing Contract
 
@@ -30,6 +38,7 @@ If routes change, update Playwright tests in the same PR.
   - pins reappear with correct alignment when returning to their route
   - pins persist after reload within the same tab session
 - Smoke tests should verify keyboard shortcut clearing of pins (`Meta+Backspace` on macOS, `Control+Delete` elsewhere) and that in-flight pins trigger bridge cancellation.
+- Completion checks should prefer stable behavior hooks (for example `data-status`) over raw color class assertions.
 - Keep `data-testid` selectors stable for:
   - clickable target elements for pin placement
   - route navigation controls

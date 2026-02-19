@@ -55,7 +55,7 @@ Then open:
 
 Manual checks:
 
-1. Press `c` to enter comment mode.
+1. Press `c` to enter pin mode.
 2. Click an element, enter a prompt, and submit.
 3. Confirm pin transitions (`queued` -> `running` -> terminal state).
 4. Confirm artifacts are written to `.pinpatch/` in repo root.

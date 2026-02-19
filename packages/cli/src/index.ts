@@ -11,13 +11,17 @@ import {
   resolveConfig,
   TaskEventBus,
   TaskRunner,
-  type ProviderName
+  type ProviderName,
 } from "@pinpatch/core";
 import { createProviderRegistry } from "@pinpatch/providers";
 import { createReverseProxy } from "@pinpatch/proxy";
 
-const cliEntrypointDir = process.argv[1] ? path.dirname(path.resolve(process.argv[1])) : process.cwd();
-const packageRootFromCli = ["bin", "dist", "src"].includes(path.basename(cliEntrypointDir))
+const cliEntrypointDir = process.argv[1]
+  ? path.dirname(path.resolve(process.argv[1]))
+  : process.cwd();
+const packageRootFromCli = ["bin", "dist", "src"].includes(
+  path.basename(cliEntrypointDir),
+)
   ? path.resolve(cliEntrypointDir, "..")
   : cliEntrypointDir;
 const workspaceRootFromCli = path.resolve(packageRootFromCli, "../..");
@@ -34,13 +38,21 @@ const resolveRuntimeCwd = (): string => {
   const cwd = process.cwd();
 
   const workspaceRootFromCwd = path.resolve(cwd, "../..");
-  const workspaceMarkerFromCwd = path.join(workspaceRootFromCwd, "pnpm-workspace.yaml");
-  const appearsToBeCliPackage = path.basename(cwd) === "cli" && path.basename(path.dirname(cwd)) === "packages";
+  const workspaceMarkerFromCwd = path.join(
+    workspaceRootFromCwd,
+    "pnpm-workspace.yaml",
+  );
+  const appearsToBeCliPackage =
+    path.basename(cwd) === "cli" &&
+    path.basename(path.dirname(cwd)) === "packages";
   if (appearsToBeCliPackage && existsSync(workspaceMarkerFromCwd)) {
     return workspaceRootFromCwd;
   }
 
-  const workspaceMarker = path.join(workspaceRootFromCli, "pnpm-workspace.yaml");
+  const workspaceMarker = path.join(
+    workspaceRootFromCli,
+    "pnpm-workspace.yaml",
+  );
   if (cwd === packageRootFromCli && existsSync(workspaceMarker)) {
     return workspaceRootFromCli;
   }
@@ -89,12 +101,12 @@ const targetReachable = async (port: number): Promise<boolean> => {
         host: "localhost",
         port,
         path: "/",
-        timeout: 1500
+        timeout: 1500,
       },
       () => {
         request.destroy();
         resolve(true);
-      }
+      },
     );
 
     request.on("error", () => resolve(false));
@@ -109,10 +121,36 @@ const resolveOverlayBundlePath = (cwd: string): string | undefined => {
   const candidates = [
     process.env.PINPATCH_OVERLAY_SCRIPT_PATH,
     path.join(cwd, "apps", "overlay", "dist", "pinpatch-overlay.iife.js"),
-    path.join(cwd, "node_modules", "@repo", "overlay", "dist", "pinpatch-overlay.iife.js"),
-    path.join(packageRootFromCli, "node_modules", "@repo", "overlay", "dist", "pinpatch-overlay.iife.js"),
-    path.join(workspaceRootFromCli, "apps", "overlay", "dist", "pinpatch-overlay.iife.js"),
-    path.join(resolveRuntimeCwd(), "apps", "overlay", "dist", "pinpatch-overlay.iife.js")
+    path.join(
+      cwd,
+      "node_modules",
+      "@pinpatch",
+      "overlay",
+      "dist",
+      "pinpatch-overlay.iife.js",
+    ),
+    path.join(
+      packageRootFromCli,
+      "node_modules",
+      "@pinpatch",
+      "overlay",
+      "dist",
+      "pinpatch-overlay.iife.js",
+    ),
+    path.join(
+      workspaceRootFromCli,
+      "apps",
+      "overlay",
+      "dist",
+      "pinpatch-overlay.iife.js",
+    ),
+    path.join(
+      resolveRuntimeCwd(),
+      "apps",
+      "overlay",
+      "dist",
+      "pinpatch-overlay.iife.js",
+    ),
   ].filter((value): value is string => Boolean(value));
 
   for (const candidate of candidates) {
@@ -122,18 +160,33 @@ const resolveOverlayBundlePath = (cwd: string): string | undefined => {
   }
 
   const maybeBuildOverlay = (workspaceRoot: string): string | undefined => {
-    const overlayWorkspace = path.join(workspaceRoot, "apps", "overlay", "package.json");
+    const overlayWorkspace = path.join(
+      workspaceRoot,
+      "apps",
+      "overlay",
+      "package.json",
+    );
     if (!existsSync(overlayWorkspace)) {
       return undefined;
     }
 
-    const output = spawnSync("pnpm", ["--filter", "@pinpatch/overlay", "build"], {
-      cwd: workspaceRoot,
-      stdio: "inherit"
-    });
+    const output = spawnSync(
+      "pnpm",
+      ["--filter", "@pinpatch/overlay", "build"],
+      {
+        cwd: workspaceRoot,
+        stdio: "inherit",
+      },
+    );
 
     if (output.status === 0) {
-      const builtPath = path.join(workspaceRoot, "apps", "overlay", "dist", "pinpatch-overlay.iife.js");
+      const builtPath = path.join(
+        workspaceRoot,
+        "apps",
+        "overlay",
+        "dist",
+        "pinpatch-overlay.iife.js",
+      );
       if (existsSync(builtPath)) {
         return builtPath;
       }
@@ -165,19 +218,19 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
     target: options.target,
     debug: options.debug,
     bridgePort: options.bridgePort,
-    proxyPort: options.proxyPort
+    proxyPort: options.proxyPort,
   });
 
   const logger = createLogger({
     store,
     component: "cli",
-    debugEnabled: config.debug
+    debugEnabled: config.debug,
   });
 
   const reachable = await targetReachable(config.target);
   if (!reachable) {
     throw new Error(
-      `Target localhost:${config.target} is unreachable. Start your app first and retry. Hint: lsof -i :${config.target}`
+      `Target localhost:${config.target} is unreachable. Start your app first and retry. Hint: lsof -i :${config.target}`,
     );
   }
 
@@ -190,14 +243,14 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
     store,
     logger,
     overlayScriptPath,
-    getProviderAdapter: (provider) => providerRegistry.getAdapter(provider)
+    getProviderAdapter: (provider) => providerRegistry.getAdapter(provider),
   });
 
   const proxy = createReverseProxy({
     targetPort: config.target,
     proxyPort: config.proxyPort,
     bridgePort: config.bridgePort,
-    logger
+    logger,
   });
 
   try {
@@ -205,7 +258,9 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "EADDRINUSE") {
-      throw new Error(`Bridge port ${config.bridgePort} is already in use. Hint: lsof -i :${config.bridgePort}`);
+      throw new Error(
+        `Bridge port ${config.bridgePort} is already in use. Hint: lsof -i :${config.bridgePort}`,
+      );
     }
 
     throw error;
@@ -217,7 +272,9 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "EADDRINUSE") {
       await bridge.stop();
-      throw new Error(`Proxy port ${config.proxyPort} is already in use. Hint: lsof -i :${config.proxyPort}`);
+      throw new Error(
+        `Proxy port ${config.proxyPort} is already in use. Hint: lsof -i :${config.proxyPort}`,
+      );
     }
 
     await bridge.stop();
@@ -235,7 +292,10 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
   await bridge.stop();
 };
 
-const runImplement = async (taskId: string, options: ImplementCommandOptions): Promise<void> => {
+const runImplement = async (
+  taskId: string,
+  options: ImplementCommandOptions,
+): Promise<void> => {
   const cwd = resolveRuntimeCwd();
   const store = new ArtifactStore(cwd);
   await store.ensureStructure();
@@ -244,13 +304,13 @@ const runImplement = async (taskId: string, options: ImplementCommandOptions): P
   const config = await resolveConfig(cwd, {
     provider: options.provider,
     model: options.model,
-    debug: options.debug
+    debug: options.debug,
   });
 
   const logger = createLogger({
     store,
     component: "cli",
-    debugEnabled: config.debug
+    debugEnabled: config.debug,
   });
 
   const task = await store.getTask(taskId);
@@ -265,7 +325,7 @@ const runImplement = async (taskId: string, options: ImplementCommandOptions): P
     store,
     logger,
     eventBus,
-    getProviderAdapter: (provider) => providerRegistry.getAdapter(provider)
+    getProviderAdapter: (provider) => providerRegistry.getAdapter(provider),
   });
 
   const sessionId = generateSessionId();
@@ -275,7 +335,7 @@ const runImplement = async (taskId: string, options: ImplementCommandOptions): P
     provider: config.provider,
     model: config.model,
     dryRun: Boolean(options.dryRun),
-    debug: config.debug
+    debug: config.debug,
   });
 
   console.log(`Task ${taskId} -> ${result.status}`);
@@ -305,7 +365,9 @@ const runTasks = async (options: TasksCommandOptions): Promise<void> => {
   }
 
   const tasks = await store.listTasks();
-  tasks.sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+  tasks.sort(
+    (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
+  );
 
   if (tasks.length === 0) {
     console.log("No tasks found in .pinpatch/tasks");
@@ -319,25 +381,28 @@ const runTasks = async (options: TasksCommandOptions): Promise<void> => {
       updatedAt: task.updatedAt,
       provider: task.provider ?? "-",
       model: task.model ?? "-",
-      latestSessionId: task.latestSessionId ?? "-"
-    }))
+      latestSessionId: task.latestSessionId ?? "-",
+    })),
   );
 };
 
 const program = new Command();
-program
-  .name("pinpatch")
-  .description("Pinpatch CLI")
-  .version("0.1.0");
+program.name("pinpatch").description("Pinpatch CLI").version("0.1.0");
 
 program
   .command("dev")
   .description("Start Pinpatch bridge + proxy runtime")
-  .option("--target <port>", "Target app localhost port", (value) => Number.parseInt(value, 10))
+  .option("--target <port>", "Target app localhost port", (value) =>
+    Number.parseInt(value, 10),
+  )
   .option("--provider <name>", "Provider name (codex only in MVP)")
   .option("--model <model>", "Provider model")
-  .option("--bridge-port <port>", "Bridge server port", (value) => Number.parseInt(value, 10))
-  .option("--proxy-port <port>", "Proxy server port", (value) => Number.parseInt(value, 10))
+  .option("--bridge-port <port>", "Bridge server port", (value) =>
+    Number.parseInt(value, 10),
+  )
+  .option("--proxy-port <port>", "Proxy server port", (value) =>
+    Number.parseInt(value, 10),
+  )
   .option("--debug", "Enable debug logs", false)
   .action(async (options: DevCommandOptions) => {
     await runDev(options);

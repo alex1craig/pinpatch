@@ -5,7 +5,7 @@ import {
   type ProviderResult,
   type TaskRecord,
   type SessionRecord,
-  ProviderErrorCodes
+  ProviderErrorCodes,
 } from "../contracts/index";
 import { nowIso } from "./ids";
 import type { ArtifactStore } from "../storage/artifact-store";
@@ -17,7 +17,10 @@ const toMillis = (timestamp: string): number => {
   return Number.isNaN(value) ? Date.now() : value;
 };
 
-const forceMonotonicTimestamp = (nextTs: string, lastTs: number): { timestamp: string; millis: number } => {
+const forceMonotonicTimestamp = (
+  nextTs: string,
+  lastTs: number,
+): { timestamp: string; millis: number } => {
   const parsed = toMillis(nextTs);
   if (parsed > lastTs) {
     return { timestamp: new Date(parsed).toISOString(), millis: parsed };
@@ -32,9 +35,15 @@ type InFlightTask = {
   startedAt: number;
 };
 
-const TERMINAL_STATUSES = new Set<ProviderResult["status"]>(["completed", "error", "cancelled", "timeout"]);
+const TERMINAL_STATUSES = new Set<ProviderResult["status"]>([
+  "completed",
+  "error",
+  "cancelled",
+  "timeout",
+]);
 
-const isTerminalStatus = (status: string): status is ProviderResult["status"] => TERMINAL_STATUSES.has(status as ProviderResult["status"]);
+const isTerminalStatus = (status: string): status is ProviderResult["status"] =>
+  TERMINAL_STATUSES.has(status as ProviderResult["status"]);
 
 export type TaskRunnerOptions = {
   cwd: string;
@@ -92,7 +101,7 @@ export class TaskRunner {
       component: "runner",
       taskId,
       sessionId,
-      event: "task.cancel"
+      event: "task.cancel",
     });
   }
 
@@ -112,7 +121,7 @@ export class TaskRunner {
       model,
       latestSessionId: sessionId,
       sessions: Array.from(new Set([...current.sessions, sessionId])),
-      updatedAt: queuedTimestamp
+      updatedAt: queuedTimestamp,
     }));
 
     await this.store.createSession({
@@ -128,10 +137,10 @@ export class TaskRunner {
         {
           status: "queued",
           message: "Task queued",
-          timestamp: queuedTimestamp
-        }
+          timestamp: queuedTimestamp,
+        },
       ],
-      changedFiles: []
+      changedFiles: [],
     });
 
     const adapter = this.getProviderAdapter(provider);
@@ -143,9 +152,15 @@ export class TaskRunner {
         summary: `Provider ${provider} is not available in this runtime`,
         changedFiles: [],
         errorCode: ProviderErrorCodes.ProviderUnavailable,
-        errorMessage: `Provider ${provider} was not registered`
+        errorMessage: `Provider ${provider} was not registered`,
       };
-      await this.persistTerminalState(task, unavailable, provider, model, dryRun);
+      await this.persistTerminalState(
+        task,
+        unavailable,
+        provider,
+        model,
+        dryRun,
+      );
       return unavailable;
     }
 
@@ -155,7 +170,7 @@ export class TaskRunner {
       sessionId,
       status: "queued" as const,
       message: "Task queued",
-      timestamp: queuedTimestamp
+      timestamp: queuedTimestamp,
     };
 
     this.eventBus.publish(taskId, sessionId, queuedEvent);
@@ -163,7 +178,7 @@ export class TaskRunner {
     const key = this.key(taskId, sessionId);
     this.inFlight.set(key, {
       adapter,
-      startedAt: Date.now()
+      startedAt: Date.now(),
     });
 
     let lastProgressTime = toMillis(queuedTimestamp);
@@ -175,12 +190,15 @@ export class TaskRunner {
         return;
       }
 
-      const monotonic = forceMonotonicTimestamp(event.timestamp, lastProgressTime);
+      const monotonic = forceMonotonicTimestamp(
+        event.timestamp,
+        lastProgressTime,
+      );
       lastProgressTime = monotonic.millis;
 
       const normalizedEvent: ProviderProgress = {
         ...event,
-        timestamp: monotonic.timestamp
+        timestamp: monotonic.timestamp,
       };
 
       await this.store.updateSession(sessionId, (session) => {
@@ -198,9 +216,9 @@ export class TaskRunner {
               status: normalizedEvent.status,
               message: normalizedEvent.message,
               percent: normalizedEvent.percent,
-              timestamp: normalizedEvent.timestamp
-            }
-          ]
+              timestamp: normalizedEvent.timestamp,
+            },
+          ],
         };
       });
 
@@ -208,7 +226,10 @@ export class TaskRunner {
         return;
       }
 
-      if (normalizedEvent.status === "running" || normalizedEvent.status === "queued") {
+      if (
+        normalizedEvent.status === "running" ||
+        normalizedEvent.status === "queued"
+      ) {
         await this.store.updateTask(taskId, (current) => {
           if (isTerminalStatus(current.status)) {
             return current;
@@ -217,7 +238,7 @@ export class TaskRunner {
           return {
             ...current,
             status: normalizedEvent.status,
-            updatedAt: normalizedEvent.timestamp
+            updatedAt: normalizedEvent.timestamp,
           };
         });
       }
@@ -233,7 +254,7 @@ export class TaskRunner {
         status: normalizedEvent.status,
         message: normalizedEvent.message,
         percent: normalizedEvent.percent,
-        timestamp: normalizedEvent.timestamp
+        timestamp: normalizedEvent.timestamp,
       });
 
       this.logger.debug(normalizedEvent.message, {
@@ -243,8 +264,8 @@ export class TaskRunner {
         event: "task.progress",
         meta: {
           status: normalizedEvent.status,
-          percent: normalizedEvent.percent
-        }
+          percent: normalizedEvent.percent,
+        },
       });
     };
 
@@ -259,11 +280,11 @@ export class TaskRunner {
           dryRun,
           debug,
           cwd: this.cwd,
-          timeoutMs
+          timeoutMs,
         },
         (event) => {
           void handleProgress(event);
-        }
+        },
       );
 
       let timeoutHandle: NodeJS.Timeout | undefined;
@@ -277,7 +298,7 @@ export class TaskRunner {
             summary: `Task timed out after ${timeoutMs}ms`,
             changedFiles: [],
             errorCode: ProviderErrorCodes.ProviderTimeout,
-            errorMessage: `Provider timed out after ${timeoutMs}ms`
+            errorMessage: `Provider timed out after ${timeoutMs}ms`,
           });
         }, timeoutMs);
       });
@@ -286,18 +307,25 @@ export class TaskRunner {
       const normalizedResult = {
         ...result,
         taskId,
-        sessionId
+        sessionId,
       };
       terminalCommitted = true;
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
 
-      await this.persistTerminalState(task, normalizedResult, provider, model, dryRun);
+      await this.persistTerminalState(
+        task,
+        normalizedResult,
+        provider,
+        model,
+        dryRun,
+      );
       this.inFlight.delete(key);
       return normalizedResult;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown provider error";
+      const message =
+        error instanceof Error ? error.message : "Unknown provider error";
       const failedResult: ProviderResult = {
         taskId,
         sessionId,
@@ -305,11 +333,17 @@ export class TaskRunner {
         summary: "Provider execution failed",
         changedFiles: [],
         errorCode: ProviderErrorCodes.ProcessFailed,
-        errorMessage: message
+        errorMessage: message,
       };
 
       terminalCommitted = true;
-      await this.persistTerminalState(task, failedResult, provider, model, dryRun);
+      await this.persistTerminalState(
+        task,
+        failedResult,
+        provider,
+        model,
+        dryRun,
+      );
       this.inFlight.delete(key);
       return failedResult;
     }
@@ -324,7 +358,7 @@ export class TaskRunner {
       "- Never revert, overwrite, or clean up unrelated repo changes (other agents may be editing in parallel).",
       "- If unrelated files are modified or dirty, leave them untouched.",
       "- If you cannot complete the request without touching unrelated areas, stop and report the exact blocker.",
-      `User request: ${task.comment.body}`,
+      `User request: ${task.pin.body}`,
       `Page URL: ${task.url}`,
       `Element: <${task.uiChangePacket.element.tag}> text=\"${task.uiChangePacket.element.text ?? ""}\"`,
       `Bounding box: ${JSON.stringify(task.uiChangePacket.element.boundingBox)}`,
@@ -332,7 +366,7 @@ export class TaskRunner {
       `DOM snippet: ${task.uiChangePacket.domSnippet}`,
       `Computed style summary: ${JSON.stringify(task.uiChangePacket.computedStyleSummary)}`,
       `Screenshot path: ${task.screenshotPath}`,
-      "Apply the change in local files and summarize changed files."
+      "Apply the change in local files and summarize changed files.",
     ].join("\n");
   }
 
@@ -341,7 +375,7 @@ export class TaskRunner {
     result: ProviderResult,
     provider: ProviderName,
     model: string,
-    dryRun: boolean
+    dryRun: boolean,
   ): Promise<void> {
     const finishedAt = nowIso();
 
@@ -362,9 +396,9 @@ export class TaskRunner {
         {
           status: result.status,
           message: result.summary,
-          timestamp: finishedAt
-        }
-      ]
+          timestamp: finishedAt,
+        },
+      ],
     }));
 
     await this.store.updateTask(task.taskId, (current) => ({
@@ -376,7 +410,7 @@ export class TaskRunner {
       summary: result.summary,
       changedFiles: result.changedFiles,
       errorCode: result.errorCode,
-      errorMessage: result.errorMessage
+      errorMessage: result.errorMessage,
     }));
 
     this.eventBus.publish(task.taskId, result.sessionId, {
@@ -388,7 +422,7 @@ export class TaskRunner {
       changedFiles: result.changedFiles,
       errorCode: result.errorCode,
       errorMessage: result.errorMessage,
-      timestamp: finishedAt
+      timestamp: finishedAt,
     });
 
     this.logger.info(result.summary, {
@@ -399,8 +433,8 @@ export class TaskRunner {
       meta: {
         status: result.status,
         changedFiles: result.changedFiles,
-        errorCode: result.errorCode
-      }
+        errorCode: result.errorCode,
+      },
     });
   }
 }

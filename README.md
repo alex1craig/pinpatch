@@ -1,6 +1,6 @@
 # Pinpatch
 
-Pinpatch lets you drop comment pins directly on your running app, then send those requests to Codex for implementation.
+Pinpatch lets you drop pins directly on your running app, then send those requests to Codex for implementation.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ pinpatch dev --target 3000
 ```
 
 4. Open the proxied app at `http://localhost:3030`.
-5. Press `c` to enter comment mode, click an element, write a request, and submit.
+5. Press `c` to enter pin mode, click an element, write a request, and submit.
 6. Hover the pin to see progress. Completed pins auto-remove.
 
 ## CLI Commands

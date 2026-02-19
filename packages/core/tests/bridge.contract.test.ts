@@ -6,14 +6,22 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ArtifactStore } from "../src/storage/artifact-store";
 import { createLogger } from "../src/logging/logger";
 import { createBridgeServer } from "../src/bridge/server";
-import type { ProviderAdapter, ProviderTaskInput, ProviderProgress, ProviderResult } from "../src/contracts/provider";
+import type {
+  ProviderAdapter,
+  ProviderTaskInput,
+  ProviderProgress,
+  ProviderResult,
+} from "../src/contracts/provider";
 import { nowIso } from "../src/runtime/ids";
 
 class MockCodexAdapter implements ProviderAdapter {
   name = "codex" as const;
   lastPrompt: string | undefined;
 
-  async submitTask(input: ProviderTaskInput, onProgress: (event: ProviderProgress) => void): Promise<ProviderResult> {
+  async submitTask(
+    input: ProviderTaskInput,
+    onProgress: (event: ProviderProgress) => void,
+  ): Promise<ProviderResult> {
     this.lastPrompt = input.prompt;
 
     onProgress({
@@ -22,7 +30,7 @@ class MockCodexAdapter implements ProviderAdapter {
       status: "running",
       message: "mock running",
       percent: 50,
-      timestamp: nowIso()
+      timestamp: nowIso(),
     });
 
     return {
@@ -30,7 +38,7 @@ class MockCodexAdapter implements ProviderAdapter {
       sessionId: input.sessionId,
       status: "completed",
       summary: "mock completed",
-      changedFiles: ["src/example.ts"]
+      changedFiles: ["src/example.ts"],
     };
   }
 
@@ -46,7 +54,11 @@ const createTempDir = async (): Promise<string> => {
 };
 
 afterEach(async () => {
-  await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
+  await Promise.all(
+    tempDirs
+      .splice(0)
+      .map((dir) => fs.rm(dir, { recursive: true, force: true })),
+  );
 });
 
 describe("bridge API contracts", () => {
@@ -57,7 +69,7 @@ describe("bridge API contracts", () => {
     const logger = createLogger({
       store,
       debugEnabled: true,
-      component: "test"
+      component: "test",
     });
 
     const mockAdapter = new MockCodexAdapter();
@@ -67,7 +79,8 @@ describe("bridge API contracts", () => {
       port: 0,
       store,
       logger,
-      getProviderAdapter: (provider) => (provider === "codex" ? mockAdapter : undefined)
+      getProviderAdapter: (provider) =>
+        provider === "codex" ? mockAdapter : undefined,
     });
 
     const createResponse = await request(bridge.app)
@@ -76,8 +89,7 @@ describe("bridge API contracts", () => {
         sessionId: "session-1",
         url: "/billing",
         viewport: { width: 1000, height: 700 },
-        pin: { x: 100, y: 200 },
-        comment: { body: "Move button" },
+        pin: { x: 100, y: 200, body: "Move button" },
         uiChangePacket: {
           id: "packet-1",
           timestamp: nowIso(),
@@ -87,16 +99,20 @@ describe("bridge API contracts", () => {
             tag: "button",
             role: "button",
             text: "Upgrade",
-            attributes: { class: "btn", "aria-label": null, "data-testid": null },
-            boundingBox: { x: 10, y: 10, width: 100, height: 30 }
+            attributes: {
+              class: "btn",
+              "aria-label": null,
+              "data-testid": null,
+            },
+            boundingBox: { x: 10, y: 10, width: 100, height: 30 },
           },
           nearbyText: ["Pricing"],
           domSnippet: "<button>Upgrade</button>",
           computedStyleSummary: { display: "inline-flex" },
           screenshotPath: ".pinpatch/screenshots/packet.png",
-          userRequest: "Move button"
+          userRequest: "Move button",
         },
-        screenshotPath: ".pinpatch/screenshots/packet.png"
+        screenshotPath: ".pinpatch/screenshots/packet.png",
       });
 
     expect(createResponse.status).toBe(201);
@@ -109,7 +125,7 @@ describe("bridge API contracts", () => {
         provider: "codex",
         model: "gpt-5.3-codex-spark",
         dryRun: false,
-        debug: true
+        debug: true,
       });
 
     expect(submitResponse.status).toBe(202);
@@ -130,7 +146,11 @@ describe("bridge API contracts", () => {
     const completedTask = await store.getTask(taskId);
     expect(completedTask?.status).toBe("completed");
     expect(mockAdapter.lastPrompt).toContain("Scope guardrails (must follow):");
-    expect(mockAdapter.lastPrompt).toContain("Implement only the requested UI change.");
-    expect(mockAdapter.lastPrompt).toContain("Never revert, overwrite, or clean up unrelated repo changes");
+    expect(mockAdapter.lastPrompt).toContain(
+      "Implement only the requested UI change.",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "Never revert, overwrite, or clean up unrelated repo changes",
+    );
   });
 });

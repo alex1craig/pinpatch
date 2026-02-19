@@ -12,6 +12,10 @@ Scope: `packages/ui/**`
   - `packages/ui/src/components/button.tsx`
   - `packages/ui/src/components/popover.tsx`
   - `packages/ui/src/components/textarea.tsx`
+  - `packages/ui/src/components/card.tsx`
+  - `packages/ui/src/components/badge.tsx`
+  - `packages/ui/src/components/separator.tsx`
+  - `packages/ui/src/components/spinner.tsx`
 - Utilities:
   - `packages/ui/src/lib/utils.ts`
 - Styles:
@@ -19,13 +23,18 @@ Scope: `packages/ui/**`
 
 ## Component Notes
 
-- `Button` variants currently include: `default`, `secondary`, `outline`, `ghost`, and `destructive`.
-- `PopoverContent` forwards refs to the underlying Radix content element.
+- `Button` variants include: `default`, `secondary`, `outline`, `ghost`, `destructive`, and `link`.
+- `PopoverContent` forwards refs and accepts an optional `container` to control portal root.
+- `Spinner` is the shared loading indicator and should be reused instead of ad-hoc spinning icons.
 
 ## Import Convention
 
 - Use direct subpath imports:
   - `@pinpatch/ui/components/button`
+  - `@pinpatch/ui/components/card`
+  - `@pinpatch/ui/components/badge`
+  - `@pinpatch/ui/components/separator`
+  - `@pinpatch/ui/components/spinner`
   - `@pinpatch/ui/components/textarea`
   - `@pinpatch/ui/components/popover`
   - `@pinpatch/ui/lib`
@@ -40,9 +49,9 @@ Scope: `packages/ui/**`
 
 ## Styling Notes
 
-- Tailwind v4 is used directly in apps.
-- No shared tailwind preset package is used.
-- Avoid introducing app-specific styling assumptions into shared primitives.
+- Theme styles are opt-in via `.pinpatch-ui-theme`; importing globals must not force host-page restyling.
+- Dark mode is opt-in per theme wrapper (`.pinpatch-ui-theme.dark` or `[data-theme="dark"]`).
+- Shared primitives should prefer token-based classes (`bg-primary`, `text-muted-foreground`, etc.) over app-specific palette values.
 
 ## Commands
 
@@ -57,4 +66,7 @@ Scope: `packages/ui/**`
 
 - Keep components generic and composable.
 - Preserve button ref forwarding behavior.
+- When adding shadcn components, always use the CLI command:
+  - `pnpm dlx shadcn@latest add <component>`
+  - If re-generating an existing component, use `-o` to overwrite.
 - If changing subpath exports, validate overlay and test-app typecheck/build immediately.
