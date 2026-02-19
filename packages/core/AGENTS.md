@@ -24,7 +24,7 @@ Scope: `packages/core/**`
 
 - Contracts in `src/contracts/*` are the single source of truth.
 - Config precedence must remain:
-  - CLI overrides > env > `.pinpatch/config.json` > defaults.
+  - CLI overrides > `.pinpatch/config.json` > defaults.
 - Artifact structure must remain under project cwd:
   - `.pinpatch/config.json`
   - `.pinpatch/tasks/`
@@ -35,6 +35,10 @@ Scope: `packages/core/**`
 - Writes should stay atomic through fs helpers.
 - Provider prompt payloads (built in `runtime/task-runner.ts`) must keep strict scope guardrails so coding agents do not touch unrelated files or overwrite concurrent work.
 - Provider prompt payloads must treat the captured selected element as the default edit target; page/global-wrapper edits should only occur when explicitly requested.
+- Provider prompt payloads must keep provider-agnostic output requirements stable (`CHANGED: <path>` lines + one-sentence final summary) so all adapters parse terminal output consistently.
+- Config defaults at runtime:
+  - default provider is `codex`
+  - default model is provider-aware when model is omitted (`gpt-5.3-codex-spark` for `codex`, `sonnet` for `claude`)
 
 ## Bridge API Surface
 

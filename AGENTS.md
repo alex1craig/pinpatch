@@ -19,7 +19,7 @@ This file is the top-level operating guide for agents working in this repository
 
 - `packages/core`: contracts, config, artifacts, bridge server, task runner, logging.
 - `packages/cli`: `pinpatch` CLI command surface.
-- `packages/providers`: provider registry/adapters (`codex` active, others scaffolded).
+- `packages/providers`: provider registry/adapters (`codex` + `claude` active, `cursor` scaffolded).
 - `packages/proxy`: reverse proxy + HTML injection + WebSocket forwarding.
 - `packages/ui`: shared UI components used by apps.
 - `apps/overlay`: injected overlay bundle.
@@ -38,7 +38,7 @@ This file is the top-level operating guide for agents working in this repository
 - Storage split is intentional:
   - Durable runtime/task artifacts live in `./.pinpatch` (CLI/core-owned).
   - Overlay pin UI state lives in browser `sessionStorage` (tab-scoped, fast local UX, no direct browser filesystem writes).
-- Provider support is Codex-first in MVP; `claude` and `cursor` are stubs only.
+- Provider support includes `codex` and `claude`; `cursor` remains stub-only.
 - Overlay is injected by proxy through bridge-served `/overlay.js`.
 
 ## Tooling and Commands
@@ -62,13 +62,11 @@ This file is the top-level operating guide for agents working in this repository
   - `pnpm --filter @pinpatch/test-app dev`
 - Run Pinpatch CLI from source:
   - `pnpm --filter pinpatch exec tsx src/index.ts dev --target 3000`
-- Deterministic provider mode (no live Codex dependency):
-  - `PINPATCH_PROVIDER_FIXTURE=1 pnpm --filter pinpatch exec tsx src/index.ts dev --target 3000`
 
 ## Critical Invariants
 
 - Keep contracts in `packages/core/src/contracts/*` as the canonical schema source.
-- Preserve config precedence: CLI flags > env vars > `.pinpatch/config.json` > defaults.
+- Preserve config precedence: CLI flags > `.pinpatch/config.json` > defaults.
 - Use `@pinpatch/*` import routes for cross-package imports.
 - In TypeScript source, do not use `.js` suffixes in import specifiers.
 - Do not commit generated `.pinpatch/` artifacts.

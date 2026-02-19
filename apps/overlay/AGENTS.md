@@ -64,6 +64,9 @@ Scope: `apps/overlay/**`
 ## Integration Points
 
 - Bridge origin from `window.__PINPATCH_BRIDGE_URL` (fallback `http://localhost:7331`).
+- Provider/model for submit, retry, and follow-up payloads are sourced from proxy-injected globals:
+  - `window.__PINPATCH_PROVIDER` (fallback `codex`)
+  - `window.__PINPATCH_MODEL` (fallback `gpt-5.3-codex-spark`)
 - HTTP endpoints:
   - `POST /api/tasks`
   - `POST /api/tasks/:taskId/submit`

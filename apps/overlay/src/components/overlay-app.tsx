@@ -9,7 +9,7 @@ import { useOverlayKeyboard } from "../hooks/use-overlay-keyboard";
 import { useOverlayNavigation } from "../hooks/use-overlay-navigation";
 import { usePinHover } from "../hooks/use-pin-hover";
 import { buildAnchor, resolveTargetFromHint } from "../lib/anchor";
-import { getBridgeOrigin, postJson, subscribeToTaskEvents } from "../lib/bridge";
+import { getBridgeOrigin, getRuntimeProviderConfig, postJson, subscribeToTaskEvents } from "../lib/bridge";
 import { withResolvedGeometry } from "../lib/geometry";
 import { getRouteKey, randomId, toTaskId } from "../lib/ids";
 import { readPersistedPins, persistPins } from "../lib/storage";
@@ -32,6 +32,7 @@ export const OverlayApp = (): ReactElement => {
 
   const isMac = useMemo(() => /mac/i.test(navigator.platform), []);
   const bridgeOrigin = useMemo(() => getBridgeOrigin(), []);
+  const providerConfig = useMemo(() => getRuntimeProviderConfig(), []);
   const overlayContainer = useMemo(() => document.getElementById("pinpatch-overlay-root"), []);
 
   const currentRouteKey = useOverlayNavigation({
@@ -574,8 +575,8 @@ export const OverlayApp = (): ReactElement => {
 
       await postJson(`${bridgeOrigin}/api/tasks/${createResponse.taskId}/submit`, {
         sessionId: createResponse.sessionId,
-        provider: "codex",
-        model: "gpt-5.3-codex-spark",
+        provider: providerConfig.provider,
+        model: providerConfig.model,
         dryRun: false,
         debug: false
       });
@@ -632,8 +633,8 @@ export const OverlayApp = (): ReactElement => {
     try {
       const response = await postJson<{ eventsUrl: string }>(`${bridgeOrigin}/api/tasks/${pin.taskId}/submit`, {
         sessionId,
-        provider: "codex",
-        model: "gpt-5.3-codex-spark",
+        provider: providerConfig.provider,
+        model: providerConfig.model,
         dryRun: false,
         debug: false
       });
@@ -683,8 +684,8 @@ export const OverlayApp = (): ReactElement => {
     try {
       const response = await postJson<{ eventsUrl: string }>(`${bridgeOrigin}/api/tasks/${pin.taskId}/submit`, {
         sessionId,
-        provider: "codex",
-        model: "gpt-5.3-codex-spark",
+        provider: providerConfig.provider,
+        model: providerConfig.model,
         dryRun: false,
         debug: false,
         followUpBody

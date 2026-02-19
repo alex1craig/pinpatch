@@ -46,6 +46,7 @@ If routes change, update Playwright tests in the same PR.
   - status panel follow-up textarea appears on completed pins
   - follow-up supports `Shift+Enter` newline and `Enter` submit
   - `Clear` removes the completed pin
+- Smoke tests should verify runtime-config provider/model propagation for submit, follow-up, and retry payloads.
 - Smoke tests should verify generated `.pinpatch/screenshots/<taskId>.png` artifacts are non-empty captures (not 1x1 fallbacks).
 - Completion checks should prefer stable behavior hooks (for example `data-status`) over raw color class assertions.
 - Keep `data-testid` selectors stable for:
@@ -68,3 +69,4 @@ If routes change, update Playwright tests in the same PR.
 - Playwright starts both the Vite test app and Pinpatch runtime.
 - Playwright webServer prebuilds `@pinpatch/core`, `@pinpatch/providers`, `@pinpatch/proxy`, `@pinpatch/ui`, and `@pinpatch/overlay` before starting Pinpatch runtime so workspace package `dist` exports resolve in clean environments.
 - E2E uses fixture provider mode for deterministic results.
+- Playwright starts Pinpatch with `--provider claude --model sonnet` to ensure overlay payloads follow injected runtime config instead of hardcoded values.

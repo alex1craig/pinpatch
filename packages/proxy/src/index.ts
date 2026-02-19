@@ -1,11 +1,14 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import httpProxy from "http-proxy";
-import type { Logger } from "@pinpatch/core";
+import type { Logger, ProviderName } from "@pinpatch/core";
+import { injectOverlayScript } from "./inject";
 
 export type ReverseProxyOptions = {
   targetPort: number;
   proxyPort: number;
   bridgePort: number;
+  provider: ProviderName;
+  model: string;
   logger: Logger;
 };
 
@@ -13,23 +16,6 @@ export type ReverseProxyHandle = {
   server: Server;
   start(): Promise<void>;
   stop(): Promise<void>;
-};
-
-const injectOverlayScript = (html: string, bridgePort: number): string => {
-  const injectBlock = [
-    `<script>window.__PINPATCH_BRIDGE_URL = "http://localhost:${bridgePort}";</script>`,
-    `<script src="http://localhost:${bridgePort}/overlay.js" data-pinpatch-overlay="true"></script>`
-  ].join("\n");
-
-  if (html.includes("</head>")) {
-    return html.replace("</head>", `${injectBlock}\n</head>`);
-  }
-
-  if (html.includes("</body>")) {
-    return html.replace("</body>", `${injectBlock}\n</body>`);
-  }
-
-  return `${html}\n${injectBlock}`;
 };
 
 export const createReverseProxy = (options: ReverseProxyOptions): ReverseProxyHandle => {
@@ -90,7 +76,12 @@ export const createReverseProxy = (options: ReverseProxyOptions): ReverseProxyHa
           return;
         }
 
-        const injectedHtml = injectOverlayScript(originalHtml, options.bridgePort);
+        const injectedHtml = injectOverlayScript(
+          originalHtml,
+          options.bridgePort,
+          options.provider,
+          options.model
+        );
 
         res.writeHead(statusCode, {
           ...proxyRes.headers,

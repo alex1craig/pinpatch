@@ -8,16 +8,21 @@ import { createLogger } from "../src/logging/logger";
 import { createBridgeServer } from "../src/bridge/server";
 import type {
   ProviderAdapter,
+  ProviderName,
   ProviderTaskInput,
   ProviderProgress,
   ProviderResult,
 } from "../src/contracts/provider";
 import { nowIso } from "../src/runtime/ids";
 
-class MockCodexAdapter implements ProviderAdapter {
-  name = "codex" as const;
+class MockProviderAdapter implements ProviderAdapter {
+  readonly name: ProviderName;
   lastPrompt: string | undefined;
   prompts: string[] = [];
+
+  constructor(name: ProviderName) {
+    this.name = name;
+  }
 
   async submitTask(
     input: ProviderTaskInput,
@@ -117,7 +122,7 @@ describe("bridge API contracts", () => {
       component: "test",
     });
 
-    const mockAdapter = new MockCodexAdapter();
+    const mockAdapter = new MockProviderAdapter("codex");
 
     const bridge = createBridgeServer({
       cwd,
@@ -204,7 +209,13 @@ describe("bridge API contracts", () => {
       "Element attributes:",
     );
     expect(mockAdapter.lastPrompt).toContain(
-      "Output format (**must follow**) must be exactly one sentence summarizing the changes made.",
+      "Output format (must follow):",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "CHANGED: <path>",
+    );
+    expect(mockAdapter.lastPrompt).toContain(
+      "Final line must be exactly one sentence summarizing the changes made.",
     );
 
     const followUpBody = "Now make the button primary and add a subtle shadow.";
@@ -248,7 +259,7 @@ describe("bridge API contracts", () => {
       component: "test",
     });
 
-    const mockAdapter = new MockCodexAdapter();
+    const mockAdapter = new MockProviderAdapter("codex");
 
     const bridge = createBridgeServer({
       cwd,
@@ -306,5 +317,93 @@ describe("bridge API contracts", () => {
 
     expect(submitResponse.status).toBe(400);
     expect(mockAdapter.prompts).toHaveLength(0);
+  });
+
+  it("submits and persists claude provider sessions", async () => {
+    const cwd = await createTempDir();
+    const store = new ArtifactStore(cwd);
+    await store.ensureStructure();
+    const logger = createLogger({
+      store,
+      debugEnabled: true,
+      component: "test",
+    });
+
+    const codexAdapter = new MockProviderAdapter("codex");
+    const claudeAdapter = new MockProviderAdapter("claude");
+
+    const bridge = createBridgeServer({
+      cwd,
+      port: 0,
+      store,
+      logger,
+      getProviderAdapter: (provider) =>
+        provider === "claude"
+          ? claudeAdapter
+          : provider === "codex"
+            ? codexAdapter
+            : undefined,
+    });
+
+    const createResponse = await request(bridge.app)
+      .post("/api/tasks")
+      .send({
+        sessionId: "session-a",
+        url: "/billing",
+        viewport: { width: 1000, height: 700 },
+        pin: { x: 100, y: 200, body: "Make this button less prominent" },
+        uiChangePacket: {
+          id: "packet-claude",
+          timestamp: nowIso(),
+          url: "/billing",
+          viewport: { width: 1000, height: 700 },
+          element: {
+            tag: "button",
+            role: "button",
+            text: "Upgrade",
+            attributes: {
+              class: "btn",
+              "aria-label": null,
+              "data-testid": null,
+            },
+            boundingBox: { x: 10, y: 10, width: 100, height: 30 },
+          },
+          nearbyText: ["Pricing"],
+          domSnippet: "<button>Upgrade</button>",
+          computedStyleSummary: { display: "inline-flex" },
+          screenshotPath: ".pinpatch/screenshots/packet.png",
+          userRequest: "Make this button less prominent",
+        },
+        screenshotPath: ".pinpatch/screenshots/packet.png",
+      });
+
+    expect(createResponse.status).toBe(201);
+
+    const submitResponse = await request(bridge.app)
+      .post(`/api/tasks/${createResponse.body.taskId}/submit`)
+      .send({
+        sessionId: "session-a",
+        provider: "claude",
+        model: "sonnet",
+        dryRun: false,
+        debug: true,
+      });
+
+    expect(submitResponse.status).toBe(202);
+    expect(submitResponse.body.status).toBe("queued");
+
+    const taskId = String(createResponse.body.taskId);
+    await waitForTaskStatus(store, taskId, "completed");
+
+    const task = await store.getTask(taskId);
+    expect(task?.provider).toBe("claude");
+    expect(task?.model).toBe("sonnet");
+
+    const session = await store.getSession("session-a");
+    expect(session?.provider).toBe("claude");
+    expect(session?.model).toBe("sonnet");
+
+    expect(claudeAdapter.prompts).toHaveLength(1);
+    expect(codexAdapter.prompts).toHaveLength(0);
   });
 });

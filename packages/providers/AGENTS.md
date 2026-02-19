@@ -10,23 +10,26 @@ Scope: `packages/providers/**`
 
 - `packages/providers/src/index.ts`
 - `packages/providers/src/registry.ts`
+- `packages/providers/src/adapters/claude.ts`
 - `packages/providers/src/adapters/codex.ts`
 - `packages/providers/src/adapters/stub.ts`
 
 ## Current MVP Behavior
 
-- Active provider: `codex`
-- Scaffold-only providers: `claude`, `cursor` (stub adapters)
+- Active providers: `codex`, `claude`
+- Scaffold-only provider: `cursor` (stub adapter)
 
 ## Codex Adapter Notes
 
 - Uses subprocess execution (`codex` by default).
-- Env overrides:
-  - `PINPATCH_CODEX_BIN`
-  - `PINPATCH_CODEX_ARGS`
 - Initial running progress message includes the command preview with only the user-typed prompt text (JSON-escaped), not full guardrail/system prompt content.
-- Deterministic fixture mode:
-  - `PINPATCH_PROVIDER_FIXTURE=1` (also supports legacy `PINPATCH_CODEX_MOCK`)
+
+## Claude Adapter Notes
+
+- Uses subprocess execution (`claude` by default).
+- Closes child stdin immediately after spawn to prevent `claude -p` hangs when launched with piped stdio.
+- Dry runs force `--permission-mode plan` regardless of base args.
+- Parses Claude JSON output and treats `is_error: true` as provider failure.
 
 ## Adapter Contract Expectations
 

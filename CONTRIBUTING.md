@@ -6,9 +6,10 @@ This guide focuses on local testing workflows for Pinpatch contributors.
 
 - Node.js `>=18`
 - `pnpm` (the repo uses pnpm workspaces)
-- Optional for real provider runs: Codex CLI installed/authenticated (`codex` on PATH)
-- For real provider runs, enable Codex workspace write access:
-  - From this repo root, run `codex` once and allow write access.
+- Optional for real provider runs:
+  - Codex CLI installed/authenticated (`codex` on PATH)
+  - Claude Code CLI installed/authenticated (`claude` on PATH)
+- For real provider runs, enable workspace write access/trust from your chosen provider CLI.
 
 ## First-Time Setup
 
@@ -43,6 +44,15 @@ Terminal 2: start Pinpatch and proxy the app.
 pnpm --filter pinpatch exec tsx src/index.ts dev --target 3000 --proxy-port 3030 --bridge-port 7331 --debug
 ```
 
+To switch provider in this workflow, pass `--provider` (and optionally `--model`):
+
+```bash
+pnpm --filter pinpatch exec tsx src/index.ts dev --target 3000 --proxy-port 3030 --bridge-port 7331 --debug --provider codex --model gpt-5.3-codex-spark
+pnpm --filter pinpatch exec tsx src/index.ts dev --target 3000 --proxy-port 3030 --bridge-port 7331 --debug --provider claude --model sonnet
+```
+
+If you pass `--provider claude` without `--model`, Pinpatch defaults to `sonnet`.
+
 If you are using live Codex (not fixture mode), initialize write access first:
 
 ```bash
@@ -53,20 +63,14 @@ Then open:
 
 - `http://localhost:3030` (proxied app with overlay)
 
+If you are using live Claude instead, start Pinpatch with `--provider claude --model sonnet` and ensure `claude` is authenticated first.
+
 Manual checks:
 
 1. Press `c` to enter pin mode.
 2. Click an element, enter a prompt, and submit.
 3. Confirm pin transitions (`queued` -> `running` -> terminal state).
 4. Confirm artifacts are written to `.pinpatch/` in repo root.
-
-## Deterministic Local Testing (Fixture Provider)
-
-Use fixture mode to avoid live provider dependencies:
-
-```bash
-PINPATCH_PROVIDER_FIXTURE=1 pnpm --filter pinpatch exec tsx src/index.ts dev --target 3000 --proxy-port 3030 --bridge-port 7331 --debug
-```
 
 ## Automated Smoke Tests (Playwright)
 
@@ -89,5 +93,7 @@ Notes:
   - Change ports with `--bridge-port` and `--proxy-port`.
 - `Failed to start Codex process`
   - Confirm `codex` is installed/authenticated, or use fixture mode for local smoke checks.
+- `Failed to start Claude process`
+  - Confirm `claude` is installed/authenticated, or use fixture mode for local smoke checks.
 - `Codex run finishes but no files are changed`
   - Run `codex` at repo root and enable workspace write access, then rerun the request.

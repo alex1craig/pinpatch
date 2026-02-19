@@ -375,7 +375,9 @@ export class TaskRunner {
       `Computed style summary: ${JSON.stringify(task.uiChangePacket.computedStyleSummary)}`,
       `Screenshot path: ${task.screenshotPath}`,
       "Apply the change in local files.",
-      "Output format (**must follow**) must be exactly one sentence summarizing the changes made.",
+      "Output format (must follow):",
+      "- For each modified file, print a line exactly as: CHANGED: <path>",
+      "- Final line must be exactly one sentence summarizing the changes made.",
     ].join("\n");
   }
 

@@ -1,8 +1,33 @@
 import type { ProgressEvent, TerminalEvent } from "../components/types";
 
+const DEFAULT_PROVIDER = "codex";
+const DEFAULT_MODEL = "gpt-5.3-codex-spark";
+
 export const getBridgeOrigin = (): string => {
   const custom = (window as typeof window & { __PINPATCH_BRIDGE_URL?: string }).__PINPATCH_BRIDGE_URL;
   return custom ?? "http://localhost:7331";
+};
+
+export const getRuntimeProviderConfig = (): { provider: string; model: string } => {
+  const source = window as typeof window & {
+    __PINPATCH_PROVIDER?: string;
+    __PINPATCH_MODEL?: string;
+  };
+
+  const provider =
+    typeof source.__PINPATCH_PROVIDER === "string" && source.__PINPATCH_PROVIDER.length > 0
+      ? source.__PINPATCH_PROVIDER
+      : DEFAULT_PROVIDER;
+
+  const model =
+    typeof source.__PINPATCH_MODEL === "string" && source.__PINPATCH_MODEL.length > 0
+      ? source.__PINPATCH_MODEL
+      : DEFAULT_MODEL;
+
+  return {
+    provider,
+    model
+  };
 };
 
 export const postJson = async <T,>(url: string, body: unknown): Promise<T> => {

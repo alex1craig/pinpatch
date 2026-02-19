@@ -21,7 +21,10 @@ Scope: `packages/proxy/**`
 - Forces `accept-encoding: identity` to simplify HTML transformation.
 - Injects:
   - `window.__PINPATCH_BRIDGE_URL`
+  - `window.__PINPATCH_PROVIDER`
+  - `window.__PINPATCH_MODEL`
   - `<script src="http://localhost:<bridgePort>/overlay.js" data-pinpatch-overlay="true"></script>`
+- Inline script global values must be escaped for safe HTML script embedding (for example, neutralize `</script>` sequences).
 - Avoids double-injection if `data-pinpatch-overlay` is present.
 
 ## Failure Handling

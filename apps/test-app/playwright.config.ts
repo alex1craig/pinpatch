@@ -17,7 +17,7 @@ export default defineConfig({
     },
     {
       command:
-        "cd ../.. && pnpm --filter @pinpatch/core build && pnpm --filter @pinpatch/providers build && pnpm --filter @pinpatch/proxy build && pnpm --filter @pinpatch/ui build && pnpm --filter @pinpatch/overlay build && PINPATCH_PROVIDER_FIXTURE=1 pnpm --filter pinpatch exec tsx src/index.ts dev --target 3100 --proxy-port 4303 --bridge-port 7339 --debug",
+        "cd ../.. && pnpm --filter @pinpatch/core build && pnpm --filter @pinpatch/providers build && pnpm --filter @pinpatch/proxy build && pnpm --filter @pinpatch/ui build && pnpm --filter @pinpatch/overlay build && PINPATCH_PROVIDER_FIXTURE=1 pnpm --filter pinpatch exec tsx src/index.ts dev --target 3100 --proxy-port 4303 --bridge-port 7339 --provider claude --model sonnet --debug",
       port: 4303,
       reuseExistingServer: false,
       timeout: 120_000

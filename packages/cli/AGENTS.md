@@ -26,6 +26,7 @@ Scope: `packages/cli/**`
 - Start/stop bridge + reverse proxy for `dev`.
 - Trigger provider execution for `implement`.
 - Print task listings and prune output for `tasks`.
+- Enable both `codex` and `claude` adapters in runtime registry wiring.
 
 ## Important Details
 
@@ -34,6 +35,7 @@ Scope: `packages/cli/**`
 - Port conflicts should fail with actionable messaging.
 - Help text documents shared keyboard behavior for composer and completed-pin follow-up textareas (`Enter` submit, `Shift+Enter` newline).
 - Runtime cwd resolution prefers `INIT_CWD` and falls back to workspace-root inference when command cwd is the CLI package (common with `pnpm --filter ... exec`), before process cwd. This keeps `.pinpatch` artifacts and provider write scope targeting the project root.
+- `dev` passes resolved provider/model into proxy injection globals so overlay submissions use runtime config without in-overlay provider UI.
 
 ## Commands
 

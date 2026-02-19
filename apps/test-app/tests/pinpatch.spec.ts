@@ -210,14 +210,45 @@ test("pin mode toggles and submits a pin on home route", async ({ page }) => {
 });
 
 test("completed pin supports follow-up submit and clear", async ({ page }) => {
+  const expectedProvider = "claude";
+  const expectedModel = "sonnet";
+
   await page.goto("/");
   await page.waitForSelector("#pinpatch-overlay-root");
+
+  const waitForInitialSubmit = page.waitForRequest((request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (
+      request.method() !== "POST" ||
+      !/\/api\/tasks\/[^/]+\/submit$/.test(pathname)
+    ) {
+      return false;
+    }
+
+    const postData = request.postData();
+    if (!postData) {
+      return false;
+    }
+
+    try {
+      const payload = JSON.parse(postData) as {
+        provider?: string;
+        model?: string;
+      };
+      return (
+        payload.provider === expectedProvider && payload.model === expectedModel
+      );
+    } catch {
+      return false;
+    }
+  });
 
   await createPinOnTarget(
     page,
     "upgrade-button",
     "Move this button to the right and reduce padding.",
   );
+  await waitForInitialSubmit;
 
   const pin = page.getByTestId("pinpatch-pin").first();
   await expect(pin).toHaveAttribute("data-status", "completed", {
@@ -251,8 +282,16 @@ test("completed pin supports follow-up submit and clear", async ({ page }) => {
     }
 
     try {
-      const payload = JSON.parse(postData) as { followUpBody?: string };
-      return payload.followUpBody === followUpBody;
+      const payload = JSON.parse(postData) as {
+        followUpBody?: string;
+        provider?: string;
+        model?: string;
+      };
+      return (
+        payload.followUpBody === followUpBody &&
+        payload.provider === expectedProvider &&
+        payload.model === expectedModel
+      );
     } catch {
       return false;
     }
@@ -265,7 +304,82 @@ test("completed pin supports follow-up submit and clear", async ({ page }) => {
     timeout: 10_000,
   });
 
-  await pin.hover();
+  const markedAsRetryable = await page.evaluate(() => {
+    const key = "pinpatch.overlay.pins.v1";
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) {
+      return false;
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    const wrapper =
+      parsed && typeof parsed === "object" && "pins" in parsed
+        ? (parsed as { version?: number; pins?: unknown[] })
+        : null;
+    const pins = wrapper?.pins;
+    if (!Array.isArray(pins) || pins.length === 0) {
+      return false;
+    }
+
+    const pin = pins[0] as {
+      status?: string;
+      message?: string;
+    };
+    pin.status = "error";
+    pin.message = "Retry me";
+
+    window.sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        version: wrapper?.version ?? 1,
+        pins,
+      }),
+    );
+    return true;
+  });
+  expect(markedAsRetryable).toBe(true);
+
+  await page.reload();
+  await page.waitForSelector("#pinpatch-overlay-root");
+
+  const retryPin = page.getByTestId("pinpatch-pin").first();
+  await retryPin.hover();
+  await expect(page.getByTestId("pinpatch-retry")).toBeVisible();
+
+  const waitForRetrySubmit = page.waitForRequest((request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (
+      request.method() !== "POST" ||
+      !/\/api\/tasks\/[^/]+\/submit$/.test(pathname)
+    ) {
+      return false;
+    }
+
+    const postData = request.postData();
+    if (!postData) {
+      return false;
+    }
+
+    try {
+      const payload = JSON.parse(postData) as {
+        provider?: string;
+        model?: string;
+      };
+      return (
+        payload.provider === expectedProvider && payload.model === expectedModel
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  await page.getByTestId("pinpatch-retry").click();
+  await waitForRetrySubmit;
+  await expect(retryPin).toHaveAttribute("data-status", "completed", {
+    timeout: 10_000,
+  });
+
+  await retryPin.hover();
   await page.getByTestId("pinpatch-clear-pin").click();
   await expect(page.getByTestId("pinpatch-pin")).toHaveCount(0);
 });

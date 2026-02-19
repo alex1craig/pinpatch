@@ -20,29 +20,10 @@ export const DEFAULT_CONFIG: PinpatchConfig = {
   proxyPort: 3030
 };
 
-const parseBoolean = (input: string | undefined): boolean | undefined => {
-  if (input === undefined) {
-    return undefined;
-  }
-
-  if (["1", "true", "yes", "on"].includes(input.toLowerCase())) {
-    return true;
-  }
-
-  if (["0", "false", "no", "off"].includes(input.toLowerCase())) {
-    return false;
-  }
-
-  return undefined;
-};
-
-const parseNumber = (input: string | undefined): number | undefined => {
-  if (input === undefined) {
-    return undefined;
-  }
-
-  const parsed = Number.parseInt(input, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
+const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderName, string> = {
+  codex: "gpt-5.3-codex-spark",
+  claude: "sonnet",
+  cursor: "gpt-5.3-codex-spark"
 };
 
 const resolveConfigPath = (cwd: string): string => path.join(cwd, ".pinpatch", "config.json");
@@ -69,22 +50,20 @@ export const readConfigFile = async (cwd: string): Promise<Partial<PinpatchConfi
 
 export const resolveConfig = async (cwd: string, overrides: ConfigOverrides = {}): Promise<PinpatchConfig> => {
   const fileConfig = await readConfigFile(cwd);
+  const overrideConfig = omitUndefined(overrides);
+  const hasExplicitModel =
+    Object.prototype.hasOwnProperty.call(fileConfig, "model") ||
+    Object.prototype.hasOwnProperty.call(overrideConfig, "model");
 
-  const envConfig = omitUndefined({
-    provider: process.env.PINPATCH_PROVIDER as ProviderName | undefined,
-    model: process.env.PINPATCH_MODEL,
-    target: parseNumber(process.env.PINPATCH_TARGET),
-    debug: parseBoolean(process.env.PINPATCH_DEBUG),
-    bridgePort: parseNumber(process.env.PINPATCH_BRIDGE_PORT),
-    proxyPort: parseNumber(process.env.PINPATCH_PROXY_PORT)
-  });
-
-  const merged = {
+  const merged: PinpatchConfig = {
     ...DEFAULT_CONFIG,
     ...fileConfig,
-    ...envConfig,
-    ...omitUndefined(overrides)
+    ...overrideConfig
   };
+
+  if (!hasExplicitModel) {
+    merged.model = DEFAULT_MODEL_BY_PROVIDER[merged.provider];
+  }
 
   return PinpatchConfigSchema.parse(merged);
 };

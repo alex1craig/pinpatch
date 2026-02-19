@@ -246,7 +246,7 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
 
   const overlayScriptPath = resolveOverlayBundlePath(cwd);
 
-  const providerRegistry = createProviderRegistry(["codex"]);
+  const providerRegistry = createProviderRegistry(["codex", "claude"]);
   const bridge = createBridgeServer({
     cwd,
     port: config.bridgePort,
@@ -260,6 +260,8 @@ const runDev = async (options: DevCommandOptions): Promise<void> => {
     targetPort: config.target,
     proxyPort: config.proxyPort,
     bridgePort: config.bridgePort,
+    provider: config.provider,
+    model: config.model,
     logger,
   });
 
@@ -328,7 +330,7 @@ const runImplement = async (
     throw new Error(`Task ${taskId} was not found under .pinpatch/tasks`);
   }
 
-  const providerRegistry = createProviderRegistry(["codex"]);
+  const providerRegistry = createProviderRegistry(["codex", "claude"]);
   const eventBus = new TaskEventBus();
   const runner = new TaskRunner({
     cwd,
@@ -409,7 +411,7 @@ program
   .option("--target <port>", "Target app localhost port", (value) =>
     Number.parseInt(value, 10),
   )
-  .option("--provider <name>", "Provider name (codex only in MVP)")
+  .option("--provider <name>", "Provider name (codex|claude)")
   .option("--model <model>", "Provider model")
   .option("--bridge-port <port>", "Bridge server port", (value) =>
     Number.parseInt(value, 10),
