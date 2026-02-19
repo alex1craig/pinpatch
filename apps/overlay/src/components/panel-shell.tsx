@@ -30,7 +30,7 @@ export const PanelShell = ({
       side="right"
       sideOffset={10}
     >
-      {title ? <div className="text-xs font-semibold leading-none">{title}</div> : null}
+      {title ? <div className="font-semibold leading-none">{title}</div> : null}
       <div className={cn("mt-2 text-xs text-foreground", bodyClassName)}>{children}</div>
       {footer ? <div className="mt-2 flex justify-end gap-2">{footer}</div> : null}
     </PopoverContent>
