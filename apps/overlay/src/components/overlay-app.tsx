@@ -671,12 +671,12 @@ export const OverlayApp = (): ReactElement => {
       existingPins.map((entry) =>
         entry.id === pin.id
           ? {
-              ...entry,
-              body: followUpBody,
-              status: "queued",
-              sessionId,
-              message: "Follow-up queued"
-            }
+            ...entry,
+            body: followUpBody,
+            status: "queued",
+            sessionId,
+            message: "Follow-up queued"
+          }
           : entry
       )
     );
@@ -697,10 +697,10 @@ export const OverlayApp = (): ReactElement => {
         existingPins.map((entry) =>
           entry.id === pin.id
             ? {
-                ...entry,
-                status: "error",
-                message: error instanceof Error ? error.message : "Follow-up failed"
-              }
+              ...entry,
+              status: "error",
+              message: error instanceof Error ? error.message : "Follow-up failed"
+            }
             : entry
         )
       );
@@ -752,7 +752,7 @@ export const OverlayApp = (): ReactElement => {
             <Popover open={showStatusPanel || isComposerPin}>
               <PopoverTrigger asChild>
                 <button
-                  className={`pointer-events-auto inline-flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-lg ${getPinClass(pin.status)}`}
+                  className={`pointer-events-auto inline-flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-lg ${getPinClass(pin.status)}`}
                   data-status={pin.status}
                   data-testid="pinpatch-pin"
                   onMouseEnter={() => setHoveredPinId(pin.id)}
