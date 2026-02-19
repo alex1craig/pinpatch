@@ -35,6 +35,9 @@ This file is the top-level operating guide for agents working in this repository
   - `pinpatch tasks`
   - `pinpatch tasks --prune`
 - Runtime writes artifacts to `./.pinpatch` in current working directory.
+- Storage split is intentional:
+  - Durable runtime/task artifacts live in `./.pinpatch` (CLI/core-owned).
+  - Overlay pin UI state lives in browser `sessionStorage` (tab-scoped, fast local UX, no direct browser filesystem writes).
 - Provider support is Codex-first in MVP; `claude` and `cursor` are stubs only.
 - Overlay is injected by proxy through bridge-served `/overlay.js`.
 
