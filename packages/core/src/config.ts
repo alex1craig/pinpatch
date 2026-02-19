@@ -20,11 +20,7 @@ export const DEFAULT_CONFIG: PinpatchConfig = {
   proxyPort: 3030
 };
 
-const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderName, string> = {
-  codex: "gpt-5.3-codex-spark",
-  claude: "sonnet",
-  cursor: "gpt-5.3-codex-spark"
-};
+const DEFAULT_CLAUDE_MODEL = "sonnet";
 
 const resolveConfigPath = (cwd: string): string => path.join(cwd, ".pinpatch", "config.json");
 
@@ -51,9 +47,14 @@ export const readConfigFile = async (cwd: string): Promise<Partial<PinpatchConfi
 export const resolveConfig = async (cwd: string, overrides: ConfigOverrides = {}): Promise<PinpatchConfig> => {
   const fileConfig = await readConfigFile(cwd);
   const overrideConfig = omitUndefined(overrides);
-  const hasExplicitModel =
-    Object.prototype.hasOwnProperty.call(fileConfig, "model") ||
-    Object.prototype.hasOwnProperty.call(overrideConfig, "model");
+  const hasCliModelOverride = Object.prototype.hasOwnProperty.call(overrideConfig, "model");
+  const hasFileModel = Object.prototype.hasOwnProperty.call(fileConfig, "model");
+  const hasFileProvider = Object.prototype.hasOwnProperty.call(fileConfig, "provider");
+  const isBaselineFileModel =
+    hasFileModel &&
+    hasFileProvider &&
+    fileConfig.model === DEFAULT_CONFIG.model &&
+    fileConfig.provider === DEFAULT_CONFIG.provider;
 
   const merged: PinpatchConfig = {
     ...DEFAULT_CONFIG,
@@ -61,8 +62,14 @@ export const resolveConfig = async (cwd: string, overrides: ConfigOverrides = {}
     ...overrideConfig
   };
 
-  if (!hasExplicitModel) {
-    merged.model = DEFAULT_MODEL_BY_PROVIDER[merged.provider];
+  const shouldUseClaudeDefault =
+    merged.provider === "claude" &&
+    merged.model === DEFAULT_CONFIG.model &&
+    !hasCliModelOverride &&
+    (!hasFileModel || isBaselineFileModel);
+
+  if (shouldUseClaudeDefault) {
+    merged.model = DEFAULT_CLAUDE_MODEL;
   }
 
   return PinpatchConfigSchema.parse(merged);

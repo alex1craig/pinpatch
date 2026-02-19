@@ -85,6 +85,30 @@ describe("resolveConfig", () => {
     expect(config.model).toBe("sonnet");
   });
 
+  it("normalizes codex default model to sonnet when CLI switches provider to claude", async () => {
+    const cwd = await createTempDir();
+    await fs.mkdir(path.join(cwd, ".pinpatch"), { recursive: true });
+    await fs.writeFile(
+      path.join(cwd, ".pinpatch", "config.json"),
+      JSON.stringify(
+        {
+          provider: "codex",
+          model: "gpt-5.3-codex-spark"
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const config = await resolveConfig(cwd, {
+      provider: "claude"
+    });
+
+    expect(config.provider).toBe("claude");
+    expect(config.model).toBe("sonnet");
+  });
+
   it("preserves explicit CLI model when provider is overridden", async () => {
     const cwd = await createTempDir();
     const config = await resolveConfig(cwd, {
@@ -94,5 +118,16 @@ describe("resolveConfig", () => {
 
     expect(config.provider).toBe("claude");
     expect(config.model).toBe("claude-opus-4-20251001");
+  });
+
+  it("preserves explicit CLI codex model string when provider is claude", async () => {
+    const cwd = await createTempDir();
+    const config = await resolveConfig(cwd, {
+      provider: "claude",
+      model: "gpt-5.3-codex-spark"
+    });
+
+    expect(config.provider).toBe("claude");
+    expect(config.model).toBe("gpt-5.3-codex-spark");
   });
 });
