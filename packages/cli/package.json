@@ -1,0 +1,31 @@
+{
+  "name": "pinpatch",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "bin"],
+  "bin": {
+    "pinpatch": "bin/pinpatch.mjs"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'lint not configured'",
+    "clean": "rm -rf dist coverage"
+  },
+  "dependencies": {
+    "@pinpatch/core": "workspace:*",
+    "@pinpatch/providers": "workspace:*",
+    "@pinpatch/proxy": "workspace:*",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "vitest": "^3.0.6"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@pinpatch/ui": ["src/lib.ts"],
+      "@pinpatch/ui/components/*": ["src/components/*"],
+      "@pinpatch/ui/lib": ["src/lib.ts"],
+      "@pinpatch/ui/lib/*": ["src/lib/*"],
+      "@pinpatch/ui/lib/utils": ["src/lib/utils.ts"],
+      "@pinpatch/ui/*": ["src/*"]
+    },
+    "types": ["node", "react", "react-dom", "vitest/globals"]
+  },
+  "include": ["src"]
+}

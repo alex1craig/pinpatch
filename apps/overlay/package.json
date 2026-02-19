@@ -1,0 +1,33 @@
+{
+  "name": "@pinpatch/overlay",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/pinpatch-overlay.iife.js",
+  "files": ["dist"],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'lint not configured'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@pinpatch/ui": "workspace:*",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vite-plugin-css-injected-by-js": "^3.5.2",
+    "vitest": "^3.0.6"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/globals.css",
+    "baseColor": "slate",
+    "cssVariables": false,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@pinpatch/ui/lib/utils",
+    "ui": "@pinpatch/ui/components",
+    "lib": "@pinpatch/ui/lib",
+    "hooks": "@/hooks"
+  },
+  "registries": {}
+}
