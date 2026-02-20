@@ -27,9 +27,10 @@ npx pinpatch@latest --help
 ## Quick Start
 
 1. Start your local app (example on `3000`).
-2. Start Pinpatch:
+2. In another terminal, `cd` into your app's directory and start Pinpatch:
 
 ```bash
+cd /path/to/your-app
 pinpatch dev --target 3000
 ```
 

@@ -91,6 +91,43 @@ const keyboardShortcutsHelp = [
   "  Shift+Enter          Insert a newline in composer/follow-up textarea",
 ].join("\n");
 
+const commandOptionsHelp = [
+  "Command options:",
+  "  pinpatch dev [options]",
+  "    --target <port>      Target app localhost port (default: 3000)",
+  "    --provider <name>    Provider (codex|claude, default: codex)",
+  "    --model <model>      Model override (provider-aware default when omitted)",
+  "    --bridge-port <port> Bridge API port (default: 7331)",
+  "    --proxy-port <port>  Reverse proxy port (default: 3030)",
+  "    --debug              Enable verbose logging",
+  "",
+  "  pinpatch implement <taskId> [options]",
+  "    --provider <name>    Provider override for this run",
+  "    --model <model>      Model override for this run",
+  "    --dry-run            Run provider in dry-run mode",
+  "    --debug              Enable verbose logging",
+  "",
+  "  pinpatch tasks [options]",
+  "    --prune              Prune expired logs and orphan sessions",
+  "    --debug              Enable verbose logging",
+].join("\n");
+
+const defaultsAndConfigHelp = [
+  "Defaults and config precedence:",
+  "  CLI flags > .pinpatch/config.json > built-in defaults",
+  "  Provider default: codex",
+  "  Model defaults: gpt-5.3-codex-spark (codex), sonnet (claude)",
+].join("\n");
+
+const examplesHelp = [
+  "Examples:",
+  "  pinpatch dev --target 3000",
+  "  pinpatch dev --target 3000 --provider claude --model sonnet",
+  "  pinpatch implement <taskId> --dry-run --provider codex",
+  "  pinpatch tasks",
+  "  pinpatch tasks --prune",
+].join("\n");
+
 const waitForSignal = async (): Promise<void> => {
   await new Promise<void>((resolve) => {
     const onSignal = () => {
@@ -402,7 +439,7 @@ const program = new Command();
 program.name("pinpatch").description("Pinpatch CLI").version("0.1.0");
 program.addHelpText(
   "after",
-  `\nQuick reference:\n  pinpatch dev --target <port>\n  pinpatch implement <taskId>\n  pinpatch tasks\n  pinpatch tasks --prune\n\n${keyboardShortcutsHelp}\n`,
+  `\n${commandOptionsHelp}\n\n${defaultsAndConfigHelp}\n\n${examplesHelp}\n\n${keyboardShortcutsHelp}\n`,
 );
 
 program
@@ -420,6 +457,10 @@ program
     Number.parseInt(value, 10),
   )
   .option("--debug", "Enable debug logs", false)
+  .addHelpText(
+    "after",
+    "\nProvider/model can be set via flags or .pinpatch/config.json. Flags take precedence.",
+  )
   .action(async (options: DevCommandOptions) => {
     await runDev(options);
   });
@@ -432,6 +473,10 @@ program
   .option("--model <model>", "Provider model")
   .option("--dry-run", "Do not apply provider edits", false)
   .option("--debug", "Enable debug logs", false)
+  .addHelpText(
+    "after",
+    "\nExample:\n  pinpatch implement <taskId> --provider claude --model sonnet --dry-run",
+  )
   .action(async (taskId: string, options: ImplementCommandOptions) => {
     await runImplement(taskId, options);
   });
@@ -441,6 +486,7 @@ program
   .description("List or prune task/session artifacts")
   .option("--prune", "Prune expired logs and orphan sessions", false)
   .option("--debug", "Enable debug logs", false)
+  .addHelpText("after", "\nExample:\n  pinpatch tasks --prune")
   .action(async (options: TasksCommandOptions) => {
     await runTasks(options);
   });
