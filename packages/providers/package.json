@@ -1,6 +1,6 @@
 {
   "name": "@pinpatch/providers",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Provider adapter registry and implementations for Pinpatch runtime execution.",
   "license": "MIT",
   "repository": {

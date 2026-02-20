@@ -91,6 +91,7 @@ For npm publish readiness checks, package validation, publish order, and rollbac
 
 - `docs/npm-release.md`
 - `./scripts/npm-release.sh --help`
+- `./scripts/bump-version.sh --help`
 
 ## Troubleshooting
 

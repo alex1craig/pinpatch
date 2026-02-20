@@ -3,11 +3,25 @@
 This repository uses a single release script as the source of truth:
 
 - `./scripts/npm-release.sh`
+- `./scripts/bump-version.sh`
 
 Run help for all commands/options:
 
 ```bash
 ./scripts/npm-release.sh --help
+./scripts/bump-version.sh --help
+```
+
+## Version Bump
+
+Bump all publishable packages in lockstep before release:
+
+```bash
+# patch/minor/major bump from current version
+./scripts/bump-version.sh patch
+
+# or set an explicit version
+./scripts/bump-version.sh 0.1.2
 ```
 
 ## Default Release Flow
