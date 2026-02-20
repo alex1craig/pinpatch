@@ -1,6 +1,6 @@
 {
   "name": "@pinpatch/ui",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Shared React UI primitives and styles for Pinpatch apps.",
   "license": "MIT",
   "repository": {
