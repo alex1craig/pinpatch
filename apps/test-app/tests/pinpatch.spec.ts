@@ -459,6 +459,33 @@ test("pin stays aligned after viewport resize", async ({ page }) => {
   await assertPinAlignedToTarget(page, "upgrade-button", 28);
 });
 
+test("pin stays aligned while scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 360 });
+  await page.goto("/");
+  await page.waitForSelector("#pinpatch-overlay-root");
+  await page.evaluate(() => {
+    const spacer = document.createElement("div");
+    spacer.style.height = "1600px";
+    spacer.style.width = "1px";
+    document.body.appendChild(spacer);
+  });
+
+  await createPinOnTarget(
+    page,
+    "upgrade-button",
+    "Keep this aligned during scroll.",
+  );
+  await assertPinAlignedToTarget(page, "upgrade-button");
+
+  await page.evaluate(() => window.scrollTo(0, 180));
+  await expect
+    .poll(async () => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+
+  await expect(page.getByTestId("pinpatch-pin")).toHaveCount(1);
+  await assertPinAlignedToTarget(page, "upgrade-button", 28);
+});
+
 test("pins persist across routes and reload while remaining aligned", async ({
   page,
 }) => {

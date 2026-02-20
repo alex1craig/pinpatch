@@ -35,13 +35,31 @@ export const OverlayApp = (): ReactElement => {
   const providerConfig = useMemo(() => getRuntimeProviderConfig(), []);
   const overlayContainer = useMemo(() => document.getElementById("pinpatch-overlay-root"), []);
 
+  const resolvePinsForRoute = useCallback((routeKey: string): void => {
+    setPins((existingPins) => {
+      let changed = false;
+      const nextPins = existingPins.map((pin) => {
+        if (pin.routeKey !== routeKey) {
+          return pin;
+        }
+
+        const resolvedPin = withResolvedGeometry(pin);
+        if (resolvedPin !== pin) {
+          changed = true;
+        }
+
+        return resolvedPin;
+      });
+
+      return changed ? nextPins : existingPins;
+    });
+  }, []);
+
   const currentRouteKey = useOverlayNavigation({
     onRouteChange: useCallback((nextRouteKey: string): void => {
-      setPins((existingPins) =>
-        existingPins.map((pin) => (pin.routeKey === nextRouteKey ? withResolvedGeometry(pin) : pin))
-      );
+      resolvePinsForRoute(nextRouteKey);
       setHoverBox(null);
-    }, [])
+    }, [resolvePinsForRoute])
   });
 
   const visiblePins = useMemo(() => {
@@ -377,13 +395,12 @@ export const OverlayApp = (): ReactElement => {
 
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        setPins((existingPins) =>
-          existingPins.map((pin) => (pin.routeKey === currentRouteKey ? withResolvedGeometry(pin) : pin))
-        );
+        resolvePinsForRoute(currentRouteKey);
       });
     };
 
     window.addEventListener("resize", scheduleResolve);
+    window.addEventListener("scroll", scheduleResolve, true);
     scheduleResolve();
 
     return () => {
@@ -391,8 +408,9 @@ export const OverlayApp = (): ReactElement => {
         window.cancelAnimationFrame(frame);
       }
       window.removeEventListener("resize", scheduleResolve);
+      window.removeEventListener("scroll", scheduleResolve, true);
     };
-  }, [currentRouteKey]);
+  }, [currentRouteKey, resolvePinsForRoute]);
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent): void => {

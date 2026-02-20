@@ -38,7 +38,7 @@ Scope: `apps/overlay/**`
   - resolve target by stored element hints when available
   - target resolution must avoid drifting to ancestor containers when multiple nodes share the same text (prefer stronger hints such as class/test-id/id and deterministic tie-breaking)
   - fallback to viewport-relative ratios when target resolution fails
-  - recalculate visible pin coordinates on resize
+  - recalculate visible pin coordinates on resize and scroll (including nested scroll containers)
 - On composer submit, use the live clicked DOM node when still connected; only fall back to hint-based lookup when the original node is detached.
 - Hovering a pin highlights the current resolved target bounding box (or fallback rect when unresolved).
 - Completed pins remain visible until manually cleared.
