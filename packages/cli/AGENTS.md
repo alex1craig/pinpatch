@@ -35,6 +35,7 @@ Scope: `packages/cli/**`
 - `dev` checks target port reachability before startup.
 - Port conflicts should fail with actionable messaging.
 - Root `pinpatch --help` includes a command/option matrix for `dev`, `implement`, and `tasks` (including provider/model guidance and defaults), plus shared keyboard behavior.
+- CLI `--version` reads from `packages/cli/package.json` at runtime to avoid hardcoded version drift across releases.
 - Runtime cwd resolution prefers `INIT_CWD` and falls back to workspace-root inference when command cwd is the CLI package (common with `pnpm --filter ... exec`), before process cwd. This keeps `.pinpatch` artifacts and provider write scope targeting the project root.
 - `dev` passes resolved provider/model into proxy injection globals so overlay submissions use runtime config without in-overlay provider UI.
 - Keep `packages/cli/README.md` consumer-focused for npm users; monorepo contributor details belong in root docs.

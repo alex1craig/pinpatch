@@ -1,5 +1,5 @@
 import path from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import http from "node:http";
 import { spawnSync } from "node:child_process";
 import { Command } from "commander";
@@ -58,6 +58,24 @@ const resolveRuntimeCwd = (): string => {
   }
 
   return cwd;
+};
+
+const resolveCliVersion = (): string => {
+  const packageJsonPath = path.join(packageRootFromCli, "package.json");
+
+  try {
+    const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      version?: string;
+    };
+    const version = parsed.version?.trim();
+    if (version) {
+      return version;
+    }
+  } catch {
+    // Fall through to a safe fallback if package.json cannot be read.
+  }
+
+  return "0.0.0";
 };
 
 type DevCommandOptions = {
@@ -436,7 +454,7 @@ const runTasks = async (options: TasksCommandOptions): Promise<void> => {
 };
 
 const program = new Command();
-program.name("pinpatch").description("Pinpatch CLI").version("0.1.0");
+program.name("pinpatch").description("Pinpatch CLI").version(resolveCliVersion());
 program.addHelpText(
   "after",
   `\n${commandOptionsHelp}\n\n${defaultsAndConfigHelp}\n\n${examplesHelp}\n\n${keyboardShortcutsHelp}\n`,
