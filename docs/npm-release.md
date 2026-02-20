@@ -64,6 +64,16 @@ Publish with default `latest` tag:
 ./scripts/npm-release.sh publish --tag latest
 ```
 
+Promote a tested version to `latest` dist-tag:
+
+```bash
+# defaults to current packages/cli/package.json version
+./scripts/npm-release.sh promote
+
+# or specify explicit version
+./scripts/npm-release.sh promote --version 0.1.2
+```
+
 Post-publish verification:
 
 ```bash

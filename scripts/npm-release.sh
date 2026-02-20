@@ -32,6 +32,7 @@ PROXY_PORT=3441
 BAD_VERSION=""
 GOOD_VERSION=""
 DEPRECATION_REASON=""
+PROMOTE_VERSION=""
 
 log() {
   printf '\n[%s] %s\n' "$(date '+%H:%M:%S')" "$*"
@@ -76,6 +77,10 @@ Commands:
   post-verify
       Run npm view checks for all publish packages and npx pinpatch@<tag> --help.
 
+  promote
+      Promote a published version to latest for all publish packages.
+      Defaults to packages/cli/package.json version when --version is omitted.
+
   rollback
       Deprecate bad versions and restore latest dist-tag to a known-good version.
       Requires --bad-version and --good-version.
@@ -94,11 +99,16 @@ Options:
   --no-git-checks             pass --no-git-checks to pnpm publish (default)
   --git-checks                do not pass --no-git-checks to pnpm publish
   --publish-with-all          for 'all', include publish and post-verify
+  --version <version>         promote: version to set as latest for all packages
   --bad-version <version>     rollback: version to deprecate
   --good-version <version>    rollback: version to tag as latest
   --reason <text>             rollback deprecation message
   -h, --help                  show this help
 EOF
+}
+
+resolve_repo_version() {
+  node -e 'console.log(require(process.argv[1]).version)' "$ROOT_DIR/packages/cli/package.json"
 }
 
 preflight() {
@@ -268,6 +278,21 @@ rollback() {
   popd >/dev/null
 }
 
+promote() {
+  if [[ -z "$PROMOTE_VERSION" ]]; then
+    PROMOTE_VERSION="$(resolve_repo_version)"
+  fi
+
+  pushd "$ROOT_DIR" >/dev/null
+
+  local pkg
+  for pkg in "${PUBLISH_PACKAGES[@]}"; do
+    run npm dist-tag add "$pkg@$PROMOTE_VERSION" latest
+  done
+
+  popd >/dev/null
+}
+
 main() {
   [[ $# -gt 0 ]] || {
     usage
@@ -322,6 +347,10 @@ main() {
         PUBLISH_WITH_ALL=1
         shift
         ;;
+      --version)
+        PROMOTE_VERSION="$2"
+        shift 2
+        ;;
       --bad-version)
         BAD_VERSION="$2"
         shift 2
@@ -366,6 +395,9 @@ main() {
       ;;
     post-verify)
       post_verify
+      ;;
+    promote)
+      promote
       ;;
     rollback)
       rollback
