@@ -1,6 +1,6 @@
 {
   "name": "pinpatch",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI for Pinpatch pin-to-code workflow with local proxy and overlay runtime.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@pinpatch/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Core contracts, config, storage, bridge API, and task runtime for Pinpatch.",
   "license": "MIT",
   "repository": {
