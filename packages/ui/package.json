@@ -1,6 +1,19 @@
 {
   "name": "@pinpatch/ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "Shared React UI primitives and styles for Pinpatch apps.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex1craig/pinpatch.git"
+  },
+  "keywords": [
+    "pinpatch",
+    "ui",
+    "react",
+    "components",
+    "tailwind"
+  ],
   "type": "module",
   "exports": {
     "./globals.css": "./src/globals.css",
@@ -28,6 +41,12 @@
   "sideEffects": [
     "**/*.css"
   ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "peerDependencies": {
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"

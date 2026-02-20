@@ -1,11 +1,33 @@
 {
   "name": "pinpatch",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "CLI for Pinpatch pin-to-code workflow with local proxy and overlay runtime.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex1craig/pinpatch.git"
+  },
+  "keywords": [
+    "pinpatch",
+    "cli",
+    "developer-tools",
+    "proxy",
+    "overlay"
+  ],
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "bin"],
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "pinpatch": "bin/pinpatch.mjs"
   },
@@ -19,6 +41,7 @@
   },
   "dependencies": {
     "@pinpatch/core": "workspace:*",
+    "@pinpatch/overlay": "workspace:*",
     "@pinpatch/providers": "workspace:*",
     "@pinpatch/proxy": "workspace:*",
     "commander": "^13.1.0"

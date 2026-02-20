@@ -85,6 +85,13 @@ Notes:
 - The suite starts both the test app and Pinpatch runtime automatically.
 - It uses fixture mode internally for deterministic behavior.
 
+## Releasing
+
+For npm publish readiness checks, package validation, publish order, and rollback commands, use:
+
+- `docs/npm-release.md`
+- `./scripts/npm-release.sh --help`
+
 ## Troubleshooting
 
 - `Target localhost:<port> is unreachable`

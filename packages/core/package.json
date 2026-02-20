@@ -1,6 +1,19 @@
 {
   "name": "@pinpatch/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "Core contracts, config, storage, bridge API, and task runtime for Pinpatch.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex1craig/pinpatch.git"
+  },
+  "keywords": [
+    "pinpatch",
+    "core",
+    "bridge",
+    "task-runner",
+    "contracts"
+  ],
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -12,7 +25,15 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

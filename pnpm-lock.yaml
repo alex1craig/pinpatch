@@ -112,6 +112,9 @@ importers:
       '@pinpatch/core':
         specifier: workspace:*
         version: link:../core
+      '@pinpatch/overlay':
+        specifier: workspace:*
+        version: link:../../apps/overlay
       '@pinpatch/providers':
         specifier: workspace:*
         version: link:../providers

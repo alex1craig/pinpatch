@@ -1,6 +1,19 @@
 {
   "name": "@pinpatch/proxy",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "Reverse proxy with HTML overlay injection and WebSocket forwarding for Pinpatch.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex1craig/pinpatch.git"
+  },
+  "keywords": [
+    "pinpatch",
+    "proxy",
+    "overlay",
+    "http-proxy",
+    "websocket"
+  ],
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -12,7 +25,15 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

@@ -1,9 +1,30 @@
 {
   "name": "@pinpatch/overlay",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "Injected browser overlay bundle used by the Pinpatch CLI runtime.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex1craig/pinpatch.git"
+  },
+  "keywords": [
+    "pinpatch",
+    "overlay",
+    "react",
+    "injected-ui",
+    "browser"
+  ],
   "type": "module",
   "main": "dist/pinpatch-overlay.iife.js",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",

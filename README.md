@@ -200,3 +200,4 @@ Reference docs:
 
 - Product scope: `scope-doc.md`
 - MVP traceability: `docs/mvp-checklist.md`
+- npm release runbook: `docs/npm-release.md`
